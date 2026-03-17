@@ -91,14 +91,15 @@ export default function ServiceLineTab({ serviceLine }: Props) {
   const label = SERVICE_LINE_LABELS[serviceLine];
   const accentColor = serviceLine === 'coiled-tubing' ? '#073674' : serviceLine === 'wireline' ? '#0d6efd' : '#0891b2';
 
-  // Monthly uplift data for this service line
-  const monthlyData = MONTHS_2026.map(m => {
+  // Monthly uplift data for this service line — always Jan to Dec in order
+  const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthlyData = MONTHS_2026.map((m, idx) => {
     const mJobs = jobs.filter(j => j.jobDate.startsWith(m.value));
     const uplift = mJobs.reduce((sum, j) => {
       if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
       return sum;
     }, 0);
-    return { month: m.label.split(' ')[0].substring(0, 3), uplift, jobs: mJobs.length };
+    return { month: MONTH_LABELS[idx], uplift, jobs: mJobs.length };
   });
 
   return (

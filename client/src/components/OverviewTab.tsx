@@ -23,8 +23,9 @@ const SL_LIST: ServiceLine[] = ['coiled-tubing', 'wireline', 'pumping'];
 function MonthlyImpactChart() {
   const { jobs } = useData();
 
+  const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const data = useMemo(() => {
-    return MONTHS_2026.map(m => {
+    return MONTHS_2026.map((m, idx) => {
       const monthJobs = jobs.filter(j => j.jobDate.startsWith(m.value));
       const uplift = monthJobs.reduce((sum, j) => {
         if (j.productionBefore !== null && j.productionAfter !== null) {
@@ -39,7 +40,7 @@ function MonthlyImpactChart() {
         return sum;
       }, 0);
       return {
-        month: m.label.split(' ')[0].substring(0, 3),
+        month: MONTH_LABELS[idx],
         recoveryAfterJob: uplift,
         recoveryPlus30: uplift30,
         jobs: monthJobs.length,

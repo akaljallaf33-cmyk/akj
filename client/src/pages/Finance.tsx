@@ -78,7 +78,7 @@ function calcROI(
   if (production30Days == null || productionBefore == null || oilPrice == null || !totalCost) return null;
   const recovery = production30Days - productionBefore;
   if (recovery <= 0) return null;
-  const days = jobDate ? daysUntilYearEnd(jobDate) : 365;
+  const days = jobDate ? daysUntilYearEnd(jobDate) : 0;
   const periodValue = recovery * oilPrice * days;
   return (periodValue / totalCost) * 100;
 }
@@ -127,7 +127,7 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
           <TrendingUp className="w-4 h-4" />
           Monthly ROI Value (USD $)
         </CardTitle>
-        <p className="text-xs text-slate-500 mt-1">Total annual production value recovered per month from all CT interventions (Recovery at +30 Days × Oil Price × 365 days).</p>
+        <p className="text-xs text-slate-500 mt-1">Total production value recovered per month from all CT interventions (Recovery at +30 Days × Oil Price × Days remaining to 31 Dec 2026, counting from Job Date + 30 days).</p>
       </CardHeader>
       <CardContent className="p-4">
         {!hasAnyData ? (
@@ -333,7 +333,7 @@ function ROITable() {
         </Card>
         <Card className="border-0 shadow-sm bg-white">
           <CardContent className="p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total ROI Value (Annual)</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total ROI Value (to 31 Dec 2026)</p>
             <p className={`text-2xl font-bold ${totalROIValue != null ? 'text-emerald-600' : 'text-slate-400'}`}>
               {totalROIValue != null ? fmtUSD(totalROIValue) : '—'}
             </p>
@@ -376,7 +376,7 @@ function ROITable() {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Total Cost</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Recovery +30d</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Oil Price</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">ROI (Annual)</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">ROI (to 31 Dec 2026)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

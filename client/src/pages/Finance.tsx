@@ -93,7 +93,7 @@ function calcFlatROI(
   if (recovery <= 0) return null;
   const days = endDate ? daysUntilYearEnd(endDate) : 0;
   const periodValue = recovery * oilPrice * days;
-  return (periodValue / totalCost) * 100;
+  return periodValue;
 }
 
 /**
@@ -137,7 +137,7 @@ function calcDeclineROI(
     current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
   }
 
-  return (totalValue / totalCost) * 100;
+  return totalValue;
 }
 
 /**
@@ -509,8 +509,8 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
 
   const roiColor = (roi: number | null) => {
     if (roi == null) return 'text-slate-400';
-    if (roi >= 200) return 'text-emerald-600 font-bold';
-    if (roi >= 100) return 'text-emerald-500';
+    if (roi >= 1_000_000) return 'text-emerald-600 font-bold';
+    if (roi >= 500_000) return 'text-emerald-500';
     return 'text-amber-500';
   };
 
@@ -656,7 +656,7 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
                         {/* Flat ROI */}
                         <TableCell className="text-right text-sm font-mono bg-blue-50/40">
                           <span className={roiColor(flatROI)}>
-                            {flatROI != null ? `${fmt(flatROI, 1)}%` : (
+                            {flatROI != null ? fmtUSD(flatROI) : (
                               <span className="text-slate-300 text-xs">{missingReason}</span>
                             )}
                           </span>
@@ -665,11 +665,11 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
                         <TableCell className="text-right text-sm font-mono bg-amber-50/40">
                           <div>
                             <span className={declineROI != null ? 'text-amber-600 font-semibold' : 'text-slate-300 text-xs'}>
-                              {declineROI != null ? `${fmt(declineROI, 1)}%` : missingReason}
+                              {declineROI != null ? fmtUSD(declineROI) : missingReason}
                             </span>
                             {flatROI != null && declineROI != null && (
                               <p className="text-xs text-slate-400 font-normal">
-                                Δ {fmt(declineROI - flatROI, 1)}%
+                                Δ {fmtUSD(declineROI - flatROI)}
                               </p>
                             )}
                           </div>

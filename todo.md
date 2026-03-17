@@ -36,3 +36,4 @@
 - [x] Add global monthly decline rate setting to Finance page
 - [x] Add Decline-Adjusted ROI column alongside flat ROI for comparison
 - [x] Add yellow decline-adjusted ROI line to Monthly ROI chart in Finance page
+- [x] Change Flat ROI and Decline ROI columns from % to $ in Finance table

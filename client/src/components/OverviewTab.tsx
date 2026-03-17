@@ -57,10 +57,16 @@ function MonthlyImpactChart() {
         <p className="text-xs text-slate-400 mt-0.5">Net production recovery per month across all service lines</p>
       </CardHeader>
       <CardContent className="pt-4 pb-4 px-4">
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={data} barGap={2}>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={data} barGap={2} margin={{ left: 0, right: 8, top: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 10, fill: '#94a3b8' }}
+              axisLine={false}
+              tickLine={false}
+              interval={0}
+            />
             <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <Tooltip
               contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}

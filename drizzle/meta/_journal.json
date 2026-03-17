@@ -29,6 +29,13 @@
       "when": 1773773643553,
       "tag": "0003_tricky_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1773775271294,
+      "tag": "0004_good_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }

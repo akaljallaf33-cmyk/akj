@@ -1,17 +1,15 @@
 // Well Intervention Dashboard — Finance & ROI Page
 // Dragon Oil brand: #073674 blue, white, clean corporate style
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { DollarSign, TrendingUp, Pencil, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { DollarSign, TrendingUp, AlertCircle, Clock } from 'lucide-react';
 import { MONTHS_2026 } from '@/lib/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -26,24 +24,37 @@ function fmtUSD(n: number | null | undefined): string {
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
-function calcTotalCost(finance: {
+function calcJobTotalCost(job: {
+  unit?: string | null;
   ct1DailyRate?: number | null;
   operationalDays?: number | null;
   badWeatherDays?: number | null;
+  onRig?: boolean | number | null;
+  rigDailyRate?: number | null;
+  rigOperationalDays?: number | null;
+  rigBadWeatherDays?: number | null;
   jobBill?: number | null;
-} | null | undefined): number | null {
-  if (!finance) return null;
-  const bill = finance.jobBill ?? 0;
-  const rate = finance.ct1DailyRate;
-  const opDays = finance.operationalDays ?? 0;
-  const bwDays = finance.badWeatherDays ?? 0;
+}): number | null {
+  let total = 0;
+  const bill = job.jobBill ?? 0;
 
-  if (rate != null) {
-    // CT-1: jack-up rate applies
-    return (opDays * rate) + (bwDays * rate * 0.5) + bill;
+  if (job.unit === 'CT-1') {
+    const rate = job.ct1DailyRate ?? 0;
+    const opDays = job.operationalDays ?? 0;
+    const bwDays = job.badWeatherDays ?? 0;
+    total += rate * opDays + rate * 0.5 * bwDays;
   }
-  // CT-2 or others: only job bill
-  return bill > 0 ? bill : null;
+
+  const onRig = job.onRig === true || job.onRig === 1;
+  if (job.unit === 'CT-2' && onRig) {
+    const rate = job.rigDailyRate ?? 0;
+    const opDays = job.rigOperationalDays ?? 0;
+    const bwDays = job.rigBadWeatherDays ?? 0;
+    total += rate * opDays + rate * 0.5 * bwDays;
+  }
+
+  total += bill;
+  return total > 0 ? total : null;
 }
 
 function calcROI(
@@ -141,180 +152,11 @@ function OilPricePanel() {
   );
 }
 
-// ─── Finance Dialog ───────────────────────────────────────────────────────────
-
-interface FinanceDialogProps {
-  open: boolean;
-  onClose: () => void;
-  job: {
-    id: number;
-    platform: string;
-    wellNumber: string;
-    unit?: string | null;
-    jobDate: string;
-  };
-  existing?: {
-    ct1DailyRate?: number | null;
-    operationalDays?: number | null;
-    badWeatherDays?: number | null;
-    jobBill?: number | null;
-    notes?: string | null;
-  } | null;
-  onSaved: () => void;
-}
-
-function FinanceDialog({ open, onClose, job, existing, onSaved }: FinanceDialogProps) {
-  const isCT1 = job.unit === 'CT-1';
-
-  const [ct1DailyRate, setCt1DailyRate] = useState(String(existing?.ct1DailyRate ?? ''));
-  const [opDays, setOpDays] = useState(String(existing?.operationalDays ?? ''));
-  const [bwDays, setBwDays] = useState(String(existing?.badWeatherDays ?? ''));
-  const [jobBill, setJobBill] = useState(String(existing?.jobBill ?? ''));
-  const [notes, setNotes] = useState(existing?.notes ?? '');
-
-  const upsertMutation = trpc.finance.upsertJobFinance.useMutation({
-    onSuccess: () => { onSaved(); onClose(); toast.success('Finance data saved'); },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const handleSave = () => {
-    const rate = isCT1 ? (parseInt(ct1DailyRate, 10) || null) : null;
-    const op = isCT1 ? (parseInt(opDays, 10) || null) : null;
-    const bw = isCT1 ? (parseInt(bwDays, 10) || null) : null;
-    const bill = parseInt(jobBill, 10) || null;
-
-    if (!bill && !rate) { toast.error('Please enter at least a job bill or daily rate'); return; }
-
-    upsertMutation.mutate({
-      wellJobId: job.id,
-      ct1DailyRate: rate,
-      operationalDays: op,
-      badWeatherDays: bw,
-      jobBill: bill,
-      notes: notes || undefined,
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-[#073674] text-lg font-bold">
-            Finance Details — {job.platform} / {job.wellNumber}
-            {job.unit && <span className="ml-2 text-sm font-normal text-slate-500">({job.unit})</span>}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          {isCT1 && (
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <p className="text-xs font-semibold text-[#073674] mb-3 uppercase tracking-wider">CT-1 Jack-Up Costs</p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-600">Daily Rate (USD)</Label>
-                  <Input type="number" min="0" placeholder="e.g. 45000" value={ct1DailyRate}
-                    onChange={e => setCt1DailyRate(e.target.value)}
-                    className="border-slate-300 focus:border-[#073674] h-9 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-600">Operational Days</Label>
-                  <Input type="number" min="0" placeholder="e.g. 3" value={opDays}
-                    onChange={e => setOpDays(e.target.value)}
-                    className="border-slate-300 focus:border-[#073674] h-9 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-slate-600">Bad Weather Days</Label>
-                  <Input type="number" min="0" placeholder="e.g. 1" value={bwDays}
-                    onChange={e => setBwDays(e.target.value)}
-                    className="border-slate-300 focus:border-[#073674] h-9 text-sm" />
-                  <p className="text-xs text-slate-400">Charged at 50% rate</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-1">
-            <Label className="text-sm font-semibold text-slate-700">Job Bill (USD)</Label>
-            <Input type="number" min="0" placeholder="e.g. 120000" value={jobBill}
-              onChange={e => setJobBill(e.target.value)}
-              className="border-slate-300 focus:border-[#073674]" />
-            <p className="text-xs text-slate-400">Additional cost for the specific job/service</p>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-sm font-semibold text-slate-700">Notes (optional)</Label>
-            <Textarea placeholder="Any additional finance remarks..." value={notes}
-              onChange={e => setNotes(e.target.value)} rows={2}
-              className="border-slate-300 focus:border-[#073674] resize-none text-sm" />
-          </div>
-
-          {/* Live cost preview */}
-          {(() => {
-            const rate = isCT1 ? (parseInt(ct1DailyRate, 10) || null) : null;
-            const op = parseInt(opDays, 10) || 0;
-            const bw = parseInt(bwDays, 10) || 0;
-            const bill = parseInt(jobBill, 10) || 0;
-            const jackUpCost = rate ? (op * rate) + (bw * rate * 0.5) : 0;
-            const total = jackUpCost + bill;
-            if (!total) return null;
-            return (
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-sm">
-                <p className="font-semibold text-slate-700 mb-1">Cost Preview</p>
-                {isCT1 && rate != null && (
-                  <>
-                    <div className="flex justify-between text-slate-500">
-                      <span>Operational ({op} days × ${rate.toLocaleString()})</span>
-                      <span>${(op * rate).toLocaleString()}</span>
-                    </div>
-                    {bw > 0 && (
-                      <div className="flex justify-between text-slate-500">
-                        <span>Bad Weather ({bw} days × ${rate.toLocaleString()} × 50%)</span>
-                        <span>${(bw * rate * 0.5).toLocaleString()}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                {bill > 0 && (
-                  <div className="flex justify-between text-slate-500">
-                    <span>Job Bill</span>
-                    <span>${bill.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold text-[#073674] border-t border-slate-200 mt-1 pt-1">
-                  <span>Total Cost</span>
-                  <span>${total.toLocaleString()}</span>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={upsertMutation.isPending}
-            className="bg-[#073674] hover:bg-[#052a5c] text-white">
-            Save Finance Data
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ─── ROI Table ────────────────────────────────────────────────────────────────
 
 function ROITable() {
   const { data: jobs = [], isLoading: jobsLoading } = trpc.wellJobs.list.useQuery();
-  const { data: financeList = [], refetch: refetchFinance } = trpc.finance.listJobFinance.useQuery();
   const { data: oilPrices = [] } = trpc.finance.listOilPrices.useQuery();
-
-  const [dialogJob, setDialogJob] = useState<typeof jobs[0] | null>(null);
-
-  const financeMap = useMemo(() => {
-    const m: Record<number, typeof financeList[0]> = {};
-    financeList.forEach(f => { m[f.wellJobId] = f; });
-    return m;
-  }, [financeList]);
 
   const oilPriceMap = useMemo(() => {
     const m: Record<string, number> = {};
@@ -322,23 +164,34 @@ function ROITable() {
     return m;
   }, [oilPrices]);
 
-  // Only show CT jobs in ROI table (CT-1 and CT-2)
+  // Only show CT jobs
   const ctJobs = useMemo(() =>
     jobs.filter(j => j.serviceLine === 'coiled-tubing').sort((a, b) => a.jobDate.localeCompare(b.jobDate)),
     [jobs]
   );
 
   const rows = useMemo(() => ctJobs.map(job => {
-    const finance = financeMap[job.id] ?? null;
     const month = job.jobDate.substring(0, 7);
     const oilPrice = oilPriceMap[month] ?? null;
-    const totalCost = calcTotalCost(finance);
+    const totalCost = calcJobTotalCost(job);
     const roi = calcROI(job.production30Days, job.productionBefore, oilPrice, totalCost);
     const recovery = (job.production30Days != null && job.productionBefore != null)
       ? job.production30Days - job.productionBefore
       : null;
-    return { job, finance, oilPrice, totalCost, roi, recovery };
-  }), [ctJobs, financeMap, oilPriceMap]);
+
+    // Jack-up cost breakdown for display
+    let jackUpCost: number | null = null;
+    if (job.unit === 'CT-1' && job.ct1DailyRate) {
+      jackUpCost = (job.operationalDays ?? 0) * job.ct1DailyRate + (job.badWeatherDays ?? 0) * job.ct1DailyRate * 0.5;
+    }
+    const onRig = !!job.onRig;
+    let rigCost: number | null = null;
+    if (job.unit === 'CT-2' && onRig && job.rigDailyRate) {
+      rigCost = (job.rigOperationalDays ?? 0) * job.rigDailyRate + (job.rigBadWeatherDays ?? 0) * job.rigDailyRate * 0.5;
+    }
+
+    return { job, oilPrice, totalCost, roi, recovery, jackUpCost, rigCost };
+  }), [ctJobs, oilPriceMap]);
 
   const totalCostSum = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0);
   const totalRecovery = rows.reduce((s, r) => s + (r.recovery ?? 0), 0);
@@ -385,6 +238,7 @@ function ROITable() {
           </CardTitle>
           <p className="text-xs text-slate-500 mt-1">
             ROI = (Production Recovery at +30 Days × Monthly Oil Price × 365) ÷ Total Job Cost × 100%
+            &nbsp;|&nbsp; Cost data is entered when adding/editing a CT job.
           </p>
         </CardHeader>
         <CardContent className="p-0">
@@ -404,22 +258,19 @@ function ROITable() {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Well</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Unit</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Date</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Jack-Up Cost</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Rig / Jack-Up Cost</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Job Bill</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Total Cost</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Recovery +30d</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Oil Price</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">ROI (Annual)</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map(({ job, finance, oilPrice, totalCost, roi, recovery }, idx) => {
-                    const jackUpCost = finance && finance.ct1DailyRate != null
-                      ? ((finance.operationalDays ?? 0) * finance.ct1DailyRate) + ((finance.badWeatherDays ?? 0) * finance.ct1DailyRate * 0.5)
-                      : null;
-                    const hasFinance = finance != null;
+                  {rows.map(({ job, oilPrice, totalCost, roi, recovery, jackUpCost, rigCost }, idx) => {
+                    const displayRigCost = jackUpCost ?? rigCost;
                     const roiColor = roi == null ? 'text-slate-400' : roi >= 200 ? 'text-emerald-600 font-bold' : roi >= 100 ? 'text-emerald-500' : 'text-amber-500';
+                    const hasCost = totalCost != null;
 
                     return (
                       <TableRow key={job.id} className="border-b border-slate-50 hover:bg-blue-50/40">
@@ -436,8 +287,8 @@ function ROITable() {
                         <TableCell className="text-sm text-slate-500 font-mono whitespace-nowrap">
                           {new Date(job.jobDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </TableCell>
-                        <TableCell className="text-right text-sm font-mono text-slate-600">{fmtUSD(jackUpCost)}</TableCell>
-                        <TableCell className="text-right text-sm font-mono text-slate-600">{fmtUSD(finance?.jobBill)}</TableCell>
+                        <TableCell className="text-right text-sm font-mono text-slate-600">{fmtUSD(displayRigCost)}</TableCell>
+                        <TableCell className="text-right text-sm font-mono text-slate-600">{fmtUSD(job.jobBill)}</TableCell>
                         <TableCell className="text-right text-sm font-mono font-semibold text-slate-800">{fmtUSD(totalCost)}</TableCell>
                         <TableCell className="text-right text-sm font-mono">
                           {recovery != null ? (
@@ -454,20 +305,10 @@ function ROITable() {
                             {roi != null ? `${fmt(roi, 1)}%` : (
                               <span className="flex items-center justify-end gap-1 text-slate-300 text-xs">
                                 <Clock className="w-3 h-3" />
-                                {!hasFinance ? 'No cost data' : !oilPrice ? 'No oil price' : 'No +30d data'}
+                                {!hasCost ? 'No cost data' : !oilPrice ? 'No oil price' : 'No +30d data'}
                               </span>
                             )}
                           </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 hover:bg-blue-50"
-                            onClick={() => setDialogJob(job)}
-                          >
-                            <Pencil className="w-3.5 h-3.5 text-slate-400" />
-                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -478,17 +319,6 @@ function ROITable() {
           )}
         </CardContent>
       </Card>
-
-      {/* Finance Dialog */}
-      {dialogJob && (
-        <FinanceDialog
-          open={!!dialogJob}
-          onClose={() => setDialogJob(null)}
-          job={dialogJob}
-          existing={financeMap[dialogJob.id]}
-          onSaved={refetchFinance}
-        />
-      )}
     </>
   );
 }
@@ -505,7 +335,7 @@ export default function Finance() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-[#073674]">Finance & ROI</h2>
-          <p className="text-sm text-slate-500">Track job costs, investment, and return on investment for Coiled Tubing operations</p>
+          <p className="text-sm text-slate-500">Track job costs, investment, and return on investment for Coiled Tubing operations. Cost data is entered directly when adding or editing a CT job.</p>
         </div>
       </div>
 

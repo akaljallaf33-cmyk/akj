@@ -87,9 +87,21 @@ export const appRouter = router({
         production30Days: z.number().int().nullable(),
         status: z.enum(['Successful', 'Partially Successful', 'Failed']),
         notes: z.string().optional(),
+        // CT-1 cost fields
+        ct1DailyRate: z.number().nullable().optional(),
+        operationalDays: z.number().nullable().optional(),
+        badWeatherDays: z.number().nullable().optional(),
+        // CT-2 rig cost fields
+        onRig: z.boolean().optional(),
+        rigDailyRate: z.number().nullable().optional(),
+        rigOperationalDays: z.number().nullable().optional(),
+        rigBadWeatherDays: z.number().nullable().optional(),
+        // Shared
+        jobBill: z.number().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
-        return createWellJob(input);
+        const { onRig, ...rest } = input;
+        return createWellJob({ ...rest, onRig: onRig ? 1 : 0 });
       }),
 
     update: publicProcedure
@@ -106,10 +118,21 @@ export const appRouter = router({
         production30Days: z.number().int().nullable().optional(),
         status: z.enum(['Successful', 'Partially Successful', 'Failed']).optional(),
         notes: z.string().optional(),
+        // CT-1 cost fields
+        ct1DailyRate: z.number().nullable().optional(),
+        operationalDays: z.number().nullable().optional(),
+        badWeatherDays: z.number().nullable().optional(),
+        // CT-2 rig cost fields
+        onRig: z.boolean().optional(),
+        rigDailyRate: z.number().nullable().optional(),
+        rigOperationalDays: z.number().nullable().optional(),
+        rigBadWeatherDays: z.number().nullable().optional(),
+        // Shared
+        jobBill: z.number().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
-        const { id, ...data } = input;
-        return updateWellJob(id, data);
+        const { id, onRig, ...data } = input;
+        return updateWellJob(id, { ...data, ...(onRig !== undefined ? { onRig: onRig ? 1 : 0 } : {}) });
       }),
 
     delete: publicProcedure

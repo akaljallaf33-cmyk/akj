@@ -54,6 +54,17 @@ export interface WellJob {
   production30Days: number | null; // bbl/d at +30 days
   status: JobStatus;
   notes?: string;
+  // CT-1 cost fields (jack-up based)
+  ct1DailyRate?: number | null;       // USD/day
+  operationalDays?: number | null;    // days at full rate
+  badWeatherDays?: number | null;     // days at 50% rate
+  // CT-2 rig cost fields
+  onRig?: boolean;                    // true if CT-2 is on a rig
+  rigDailyRate?: number | null;       // USD/day — rig daily rate
+  rigOperationalDays?: number | null; // rig days at full rate
+  rigBadWeatherDays?: number | null;  // rig days at 50% rate
+  // Shared
+  jobBill?: number | null;            // USD — job service bill
 }
 
 export interface MonthlyImpact {

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { double, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -40,6 +40,17 @@ export const wellJobs = mysqlTable('well_jobs', {
   production30Days: int('production30Days'),
   status: mysqlEnum('status', ['Successful', 'Partially Successful', 'Failed']).notNull(),
   notes: text('notes'),
+  // CT-1 cost fields (jack-up based)
+  ct1DailyRate: double('ct1DailyRate'),       // USD/day — CT-1 jack-up daily rate
+  operationalDays: double('operationalDays'), // days at full rate
+  badWeatherDays: double('badWeatherDays'),   // days at 50% rate
+  // CT-2 rig cost fields (when CT-2 is on a rig)
+  onRig: int('onRig').default(0),             // 0 = no rig, 1 = on rig
+  rigDailyRate: double('rigDailyRate'),        // USD/day — rig daily rate for CT-2
+  rigOperationalDays: double('rigOperationalDays'), // rig days at full rate
+  rigBadWeatherDays: double('rigBadWeatherDays'),   // rig days at 50% rate
+  // Shared
+  jobBill: double('jobBill'),                 // USD — job service bill
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
 });

@@ -1,9 +1,21 @@
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { createWellJob, deleteWellJob, getAllWellJobs, updateWellJob } from "./db";
+import { ENV } from "./_core/env";
+import { SignJWT } from "jose";
+
+const WI_SESSION_COOKIE = "wi_session";
+
+async function signWiSession(username: string): Promise<string> {
+  const secret = new TextEncoder().encode(ENV.cookieSecret || "wi-secret-fallback");
+  return new SignJWT({ username, type: "wi_dashboard" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(Math.floor((Date.now() + ONE_YEAR_MS) / 1000))
+    .sign(secret);
+}
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -16,6 +28,48 @@ export const appRouter = router({
       return {
         success: true,
       } as const;
+    }),
+  }),
+
+  // Dashboard-specific login (username + password)
+  dashboard: router({
+    login: publicProcedure
+      .input(z.object({ username: z.string(), password: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const validUser = input.username === ENV.dashboardUsername;
+        const validPass = input.password === ENV.dashboardPassword;
+        if (!validUser || !validPass) {
+          throw new Error("Invalid username or password");
+        }
+        const token = await signWiSession(input.username);
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(WI_SESSION_COOKIE, token, {
+          ...cookieOptions,
+          maxAge: ONE_YEAR_MS,
+        });
+        return { success: true };
+      }),
+
+    logout: publicProcedure.mutation(({ ctx }) => {
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(WI_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 });
+      return { success: true };
+    }),
+
+    check: publicProcedure.query(async ({ ctx }) => {
+      try {
+        const { jwtVerify } = await import("jose");
+        const cookies = ctx.req.headers.cookie ?? "";
+        const match = cookies.match(new RegExp(`(?:^|;\\s*)${WI_SESSION_COOKIE}=([^;]*)`) );
+        const token = match?.[1];
+        if (!token) return { authenticated: false };
+        const secret = new TextEncoder().encode(ENV.cookieSecret || "wi-secret-fallback");
+        const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+        if ((payload as any).type !== "wi_dashboard") return { authenticated: false };
+        return { authenticated: true, username: (payload as any).username as string };
+      } catch {
+        return { authenticated: false };
+      }
     }),
   }),
 

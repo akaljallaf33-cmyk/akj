@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM well_jobs WHERE wellNumber IN ('A-01', 'B-03') AND serviceLine = 'coiled-tubing';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 46LfLAkebsAYZa6.root --database P8RX3svmXia4vbzjKeD7oZ --execute DELETE FROM well_jobs WHERE wellNumber IN ('A-01', 'B-03') AND serviceLine = 'coiled-tubing';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1743
+}

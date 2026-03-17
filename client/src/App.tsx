@@ -4,13 +4,25 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { DataProvider } from "./contexts/DataContext";
+import AuthGuard from "./components/AuthGuard";
 import Dashboard from "./pages/Dashboard";
+
+function ProtectedDashboard() {
+  return (
+    <AuthGuard>
+      <DataProvider>
+        <Dashboard />
+      </DataProvider>
+    </AuthGuard>
+  );
+}
+
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Dashboard} />
-      <Route component={Dashboard} />
+      <Route path={"/"} component={ProtectedDashboard} />
+      <Route component={ProtectedDashboard} />
     </Switch>
   );
 }
@@ -19,12 +31,10 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <DataProvider>
-          <TooltipProvider>
-            <Toaster richColors position="top-right" />
-            <Router />
-          </TooltipProvider>
-        </DataProvider>
+        <TooltipProvider>
+          <Toaster richColors position="top-right" />
+          <Router />
+        </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

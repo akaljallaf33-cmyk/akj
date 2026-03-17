@@ -3,6 +3,11 @@ import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
 // Mock the db module so tests don't need a real database
+vi.mock("jose", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("jose")>();
+  return actual;
+});
+
 vi.mock("./db", () => ({
   getAllWellJobs: vi.fn().mockResolvedValue([
     {
@@ -114,5 +119,37 @@ describe("wellJobs router", () => {
         status: "Successful",
       })
     ).rejects.toThrow();
+  });
+});
+
+describe("dashboard.login", () => {
+  it("returns success with correct credentials", async () => {
+    const ctx = createCtx();
+    (ctx.res as any).cookie = vi.fn();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.dashboard.login({
+      username: "aaljallaf",
+      password: "aljallaf",
+    });
+    expect(result.success).toBe(true);
+    expect((ctx.res as any).cookie).toHaveBeenCalled();
+  });
+
+  it("throws with wrong password", async () => {
+    const ctx = createCtx();
+    (ctx.res as any).cookie = vi.fn();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.dashboard.login({ username: "aaljallaf", password: "wrongpassword" })
+    ).rejects.toThrow("Invalid username or password");
+  });
+
+  it("throws with wrong username", async () => {
+    const ctx = createCtx();
+    (ctx.res as any).cookie = vi.fn();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.dashboard.login({ username: "wronguser", password: "aljallaf" })
+    ).rejects.toThrow("Invalid username or password");
   });
 });

@@ -4,10 +4,12 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Layers, Radio, Droplets } from 'lucide-react';
+import { Activity, Layers, Radio, Droplets, LogOut } from 'lucide-react';
 import OverviewTab from '@/components/OverviewTab';
 import ServiceLineTab from '@/components/ServiceLineTab';
 import { ServiceLine } from '@/lib/types';
+import { trpc } from '@/lib/trpc';
+import { toast } from 'sonner';
 
 type Tab = 'overview' | ServiceLine;
 
@@ -22,6 +24,14 @@ const LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030863467/P8RX3
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const utils = trpc.useUtils();
+
+  const logoutMutation = trpc.dashboard.logout.useMutation({
+    onSuccess: () => {
+      toast.success('Signed out successfully');
+      utils.dashboard.check.invalidate();
+    },
+  });
 
   const activeTabDef = TABS.find(t => t.id === activeTab)!;
 
@@ -45,11 +55,20 @@ export default function Dashboard() {
                 <p className="text-blue-200 text-xs font-medium tracking-wide">2026 Annual Forecast & Performance</p>
               </div>
             </div>
-            {/* Year badge */}
-            <div className="hidden md:flex items-center gap-2">
-              <span className="bg-white/10 text-white text-xs font-bold px-3 py-1.5 rounded-full tracking-widest uppercase">
+            {/* Year badge + Logout */}
+            <div className="flex items-center gap-3">
+              <span className="hidden md:inline bg-white/10 text-white text-xs font-bold px-3 py-1.5 rounded-full tracking-widest uppercase">
                 FY 2026
               </span>
+              <button
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+                className="flex items-center gap-1.5 text-blue-200 hover:text-white text-xs font-medium transition-colors px-2 py-1.5 rounded-lg hover:bg-white/10"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
             </div>
           </div>
         </div>

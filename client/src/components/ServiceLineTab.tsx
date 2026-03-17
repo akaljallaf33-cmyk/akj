@@ -20,7 +20,7 @@ import {
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
 import { MONTHS_2026 } from '@/lib/types';
 
@@ -143,30 +143,76 @@ export default function ServiceLineTab({ serviceLine }: Props) {
         ))}
       </div>
 
-      {/* Monthly Chart */}
+      {/* Charts Row: Monthly Recovery + Well-by-Well */}
       {jobs.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-          <div className="bg-white rounded-xl shadow-sm border-0 px-6 pt-5 pb-4">
-            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: accentColor }}>Monthly Production Recovery (bbl/d)</p>
-            <p className="text-xs text-slate-400 mb-4">Net production recovery per month — {label}</p>
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={monthlyData} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
-                  formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toLocaleString()} bbl/d`, 'Production Recovery']}
-                />
-                <Bar dataKey="uplift" radius={[3, 3, 0, 0]}>
-                  {monthlyData.map((entry, i) => (
-                    <Cell key={i} fill={entry.uplift >= 0 ? accentColor : '#ef4444'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {/* Monthly Production Recovery Chart */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+            <div className="bg-white rounded-xl shadow-sm border-0 px-6 pt-5 pb-4 h-full">
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: accentColor }}>Monthly Production Recovery (bbl/d)</p>
+              <p className="text-xs text-slate-400 mb-4">Net production recovery per month — {label}</p>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={monthlyData} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
+                    formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toLocaleString()} bbl/d`, 'Production Recovery']}
+                  />
+                  <Bar dataKey="uplift" radius={[3, 3, 0, 0]}>
+                    {monthlyData.map((entry, i) => (
+                      <Cell key={i} fill={entry.uplift >= 0 ? accentColor : '#ef4444'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+          {/* Well-by-Well Before vs After vs +30 Days Chart */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+            <div className="bg-white rounded-xl shadow-sm border-0 px-6 pt-5 pb-4 h-full">
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: accentColor }}>Well-by-Well Production (bbl/d)</p>
+              <p className="text-xs text-slate-400 mb-4">Before job vs After job vs +30 Days — per well</p>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart
+                  data={jobs
+                    .filter(j => j.productionBefore !== null || j.productionAfter !== null)
+                    .map(j => ({
+                      well: `${j.platform} ${j.wellNumber}`,
+                      'Before': j.productionBefore ?? 0,
+                      'After': j.productionAfter ?? 0,
+                      '+30 Days': j.production30Days ?? 0,
+                    }))}
+                  barGap={2}
+                  barCategoryGap="25%"
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="well"
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                    angle={-30}
+                    textAnchor="end"
+                    height={48}
+                  />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
+                    formatter={(val: number, name: string) => [`${val.toLocaleString()} bbl/d`, name]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                  <Bar dataKey="Before" fill="#94a3b8" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="After" fill={accentColor} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="+30 Days" fill="#0891b2" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {/* Table Card */}

@@ -1,0 +1,66 @@
+{
+  "query": "SELECT id, serviceLine, platform, wellNumber, unit, jobDate, ct1DailyRate, operationalDays, badWeatherDays, jobBill, onRig, rigDailyRate FROM well_jobs WHERE serviceLine = 'coiled-tubing' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 46LfLAkebsAYZa6.root --database P8RX3svmXia4vbzjKeD7oZ --execute SELECT id, serviceLine, platform, wellNumber, unit, jobDate, ct1DailyRate, operationalDays, badWeatherDays, jobBill, onRig, rigDailyRate FROM well_jobs WHERE serviceLine = 'coiled-tubing' LIMIT 10;",
+  "rows": [
+    {
+      "id": "30001",
+      "serviceLine": "coiled-tubing",
+      "platform": "1",
+      "wellNumber": "1",
+      "unit": "NULL",
+      "jobDate": "2026-01-14",
+      "ct1DailyRate": "NULL",
+      "operationalDays": "NULL",
+      "badWeatherDays": "NULL",
+      "jobBill": "NULL",
+      "onRig": "0",
+      "rigDailyRate": "NULL"
+    },
+    {
+      "id": "30002",
+      "serviceLine": "coiled-tubing",
+      "platform": "2",
+      "wellNumber": "2",
+      "unit": "NULL",
+      "jobDate": "2026-02-11",
+      "ct1DailyRate": "NULL",
+      "operationalDays": "NULL",
+      "badWeatherDays": "NULL",
+      "jobBill": "NULL",
+      "onRig": "0",
+      "rigDailyRate": "NULL"
+    },
+    {
+      "id": "30003",
+      "serviceLine": "coiled-tubing",
+      "platform": "3",
+      "wellNumber": "3",
+      "unit": "NULL",
+      "jobDate": "2026-03-17",
+      "ct1DailyRate": "NULL",
+      "operationalDays": "NULL",
+      "badWeatherDays": "NULL",
+      "jobBill": "NULL",
+      "onRig": "0",
+      "rigDailyRate": "NULL"
+    },
+    {
+      "id": "60001",
+      "serviceLine": "coiled-tubing",
+      "platform": "3",
+      "wellNumber": "3",
+      "unit": "NULL",
+      "jobDate": "2026-02-17",
+      "ct1DailyRate": "NULL",
+      "operationalDays": "NULL",
+      "badWeatherDays": "NULL",
+      "jobBill": "NULL",
+      "onRig": "0",
+      "rigDailyRate": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tserviceLine\tplatform\twellNumber\tunit\tjobDate\tct1DailyRate\toperationalDays\tbadWeatherDays\tjobBill\tonRig\trigDailyRate\n30001\tcoiled-tubing\t1\t1\tNULL\t2026-01-14\tNULL\tNULL\tNULL\tNULL\t0\tNULL\n30002\tcoiled-tubing\t2\t2\tNULL\t2026-02-11\tNULL\tNULL\tNULL\tNULL\t0\tNULL\n30003\tcoiled-tubing\t3\t3\tNULL\t2026-03-17\tNULL\tNULL\tNULL\tNULL\t0\tNULL\n60001\tcoiled-tubing\t3\t3\tNULL\t2026-02-17\tNULL\tNULL\tNULL\tNULL\t0\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1931
+}

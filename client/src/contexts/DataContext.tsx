@@ -6,12 +6,13 @@ import { WellJob, ServiceLine } from '@/lib/types';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
-// Map DB row (numeric id) to WellJob (string id) for compatibility with existing UI
+// Map DB row to WellJob — includes all cost fields
 function rowToJob(row: {
   id: number;
   serviceLine: 'coiled-tubing' | 'wireline' | 'pumping';
   platform: string;
   wellNumber: string;
+  unit?: string | null;
   jobType: string;
   jobDate: string;
   productionBefore: number | null;
@@ -19,12 +20,22 @@ function rowToJob(row: {
   production30Days: number | null;
   status: 'Successful' | 'Partially Successful' | 'Failed';
   notes?: string | null;
+  // Cost fields
+  ct1DailyRate?: number | null;
+  operationalDays?: number | null;
+  badWeatherDays?: number | null;
+  onRig?: boolean | number | null;
+  rigDailyRate?: number | null;
+  rigOperationalDays?: number | null;
+  rigBadWeatherDays?: number | null;
+  jobBill?: number | null;
 }): WellJob {
   return {
     id: String(row.id),
     serviceLine: row.serviceLine,
     platform: row.platform,
     wellNumber: row.wellNumber,
+    unit: row.unit ?? undefined,
     jobType: row.jobType,
     jobDate: row.jobDate,
     productionBefore: row.productionBefore ?? null,
@@ -32,6 +43,15 @@ function rowToJob(row: {
     production30Days: row.production30Days ?? null,
     status: row.status,
     notes: row.notes ?? undefined,
+    // Cost fields
+    ct1DailyRate: row.ct1DailyRate ?? undefined,
+    operationalDays: row.operationalDays ?? undefined,
+    badWeatherDays: row.badWeatherDays ?? undefined,
+    onRig: row.onRig ? true : false,
+    rigDailyRate: row.rigDailyRate ?? undefined,
+    rigOperationalDays: row.rigOperationalDays ?? undefined,
+    rigBadWeatherDays: row.rigBadWeatherDays ?? undefined,
+    jobBill: row.jobBill ?? undefined,
   };
 }
 
@@ -87,6 +107,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       serviceLine: job.serviceLine,
       platform: job.platform,
       wellNumber: job.wellNumber,
+      unit: job.unit,
       jobType: job.jobType,
       jobDate: job.jobDate,
       productionBefore: job.productionBefore,
@@ -94,6 +115,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       production30Days: job.production30Days,
       status: job.status,
       notes: job.notes,
+      // Cost fields
+      ct1DailyRate: job.ct1DailyRate,
+      operationalDays: job.operationalDays,
+      badWeatherDays: job.badWeatherDays,
+      onRig: job.onRig,
+      rigDailyRate: job.rigDailyRate,
+      rigOperationalDays: job.rigOperationalDays,
+      rigBadWeatherDays: job.rigBadWeatherDays,
+      jobBill: job.jobBill,
     });
   }, [createMutation]);
 
@@ -105,6 +135,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       ...(updates.serviceLine !== undefined && { serviceLine: updates.serviceLine }),
       ...(updates.platform !== undefined && { platform: updates.platform }),
       ...(updates.wellNumber !== undefined && { wellNumber: updates.wellNumber }),
+      ...(updates.unit !== undefined && { unit: updates.unit }),
       ...(updates.jobType !== undefined && { jobType: updates.jobType }),
       ...(updates.jobDate !== undefined && { jobDate: updates.jobDate }),
       ...(updates.productionBefore !== undefined && { productionBefore: updates.productionBefore }),
@@ -112,6 +143,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       ...(updates.production30Days !== undefined && { production30Days: updates.production30Days }),
       ...(updates.status !== undefined && { status: updates.status }),
       ...(updates.notes !== undefined && { notes: updates.notes }),
+      // Cost fields
+      ...(updates.ct1DailyRate !== undefined && { ct1DailyRate: updates.ct1DailyRate }),
+      ...(updates.operationalDays !== undefined && { operationalDays: updates.operationalDays }),
+      ...(updates.badWeatherDays !== undefined && { badWeatherDays: updates.badWeatherDays }),
+      ...(updates.onRig !== undefined && { onRig: updates.onRig }),
+      ...(updates.rigDailyRate !== undefined && { rigDailyRate: updates.rigDailyRate }),
+      ...(updates.rigOperationalDays !== undefined && { rigOperationalDays: updates.rigOperationalDays }),
+      ...(updates.rigBadWeatherDays !== undefined && { rigBadWeatherDays: updates.rigBadWeatherDays }),
+      ...(updates.jobBill !== undefined && { jobBill: updates.jobBill }),
     });
   }, [updateMutation]);
 

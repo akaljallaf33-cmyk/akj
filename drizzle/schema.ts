@@ -32,6 +32,7 @@ export const wellJobs = mysqlTable('well_jobs', {
   serviceLine: mysqlEnum('serviceLine', ['coiled-tubing', 'wireline', 'pumping']).notNull(),
   platform: varchar('platform', { length: 128 }).notNull(),
   wellNumber: varchar('wellNumber', { length: 64 }).notNull(),
+  unit: varchar('unit', { length: 32 }),
   jobType: varchar('jobType', { length: 128 }).notNull(),
   jobDate: varchar('jobDate', { length: 10 }).notNull(),
   productionBefore: int('productionBefore'),

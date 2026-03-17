@@ -46,6 +46,7 @@ export interface WellJob {
   serviceLine: ServiceLine;
   platform: string;
   wellNumber: string;
+  unit?: string; // e.g. CT-1, CT-2 (only for coiled-tubing)
   jobType: string;
   jobDate: string; // ISO date string YYYY-MM-DD
   productionBefore: number | null; // bbl/d

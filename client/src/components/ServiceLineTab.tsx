@@ -288,6 +288,9 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 w-10">#</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Platform</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Well No.</TableHead>
+                    {serviceLine === 'coiled-tubing' && (
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Unit</TableHead>
+                    )}
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Job Type</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Date</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Before (bbl/d)</TableHead>
@@ -312,6 +315,17 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                         <TableCell className="text-slate-400 text-xs font-mono">{idx + 1}</TableCell>
                         <TableCell className="font-semibold text-slate-700 text-sm">{job.platform}</TableCell>
                         <TableCell className="font-mono text-sm text-[#073674] font-semibold">{job.wellNumber}</TableCell>
+                        {serviceLine === 'coiled-tubing' && (
+                          <TableCell>
+                            {job.unit ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#073674]/10 text-[#073674] border border-[#073674]/20">
+                                {job.unit}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300 text-xs">—</span>
+                            )}
+                          </TableCell>
+                        )}
                         <TableCell className="text-sm text-slate-600">{job.jobType}</TableCell>
                         <TableCell className="text-sm text-slate-500 font-mono whitespace-nowrap">
                           {new Date(job.jobDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}

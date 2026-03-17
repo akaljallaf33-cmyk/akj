@@ -23,6 +23,7 @@ const defaultForm = (sl: ServiceLine): Omit<WellJob, 'id'> => ({
   serviceLine: sl,
   platform: '',
   wellNumber: '',
+  unit: '',
   jobType: '',
   jobDate: new Date().toISOString().split('T')[0],
   productionBefore: null,
@@ -102,6 +103,22 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
               className="border-slate-300 focus:border-[#073674]"
             />
           </div>
+
+          {/* Unit — only for Coiled Tubing */}
+          {serviceLine === 'coiled-tubing' && (
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold text-slate-700">CT Unit *</Label>
+              <Select value={form.unit ?? ''} onValueChange={v => set('unit', v)}>
+                <SelectTrigger className="border-slate-300">
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CT-1">CT-1</SelectItem>
+                  <SelectItem value="CT-2">CT-2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Job Type */}
           <div className="space-y-1.5">

@@ -36,6 +36,13 @@
       "when": 1773775271294,
       "tag": "0004_good_rumiko_fujikawa",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1773780138369,
+      "tag": "0005_dry_korvac",
+      "breakpoints": true
     }
   ]
 }

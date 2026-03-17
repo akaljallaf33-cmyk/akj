@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE well_jobs DROP COLUMN jobDate;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 46LfLAkebsAYZa6.root --database P8RX3svmXia4vbzjKeD7oZ --execute ALTER TABLE well_jobs DROP COLUMN jobDate;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2249
+}

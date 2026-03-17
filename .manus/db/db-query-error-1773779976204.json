@@ -1,0 +1,10 @@
+{
+  "query": "SELECT COUNT(*) as total FROM well_jobs; SELECT id, platform, wellNumber, jobDate, startDate, endDate FROM well_jobs LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 46LfLAkebsAYZa6.root --database P8RX3svmXia4vbzjKeD7oZ --execute SELECT COUNT(*) as total FROM well_jobs; SELECT id, platform, wellNumber, jobDate, startDate, endDate FROM well_jobs LIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "total",
+    "4",
+    "ERROR 1054 (42S22) at line 1: Unknown column 'startdate' in 'field list'"
+  ]
+}

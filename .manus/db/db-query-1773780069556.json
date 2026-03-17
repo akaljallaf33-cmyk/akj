@@ -1,0 +1,42 @@
+{
+  "query": "SELECT id, platform, wellNumber, jobDate, startDate, endDate FROM well_jobs;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 46LfLAkebsAYZa6.root --database P8RX3svmXia4vbzjKeD7oZ --execute SELECT id, platform, wellNumber, jobDate, startDate, endDate FROM well_jobs;",
+  "rows": [
+    {
+      "id": "30001",
+      "platform": "1",
+      "wellNumber": "1",
+      "jobDate": "2026-01-14",
+      "startDate": "2026-01-14",
+      "endDate": "2026-01-14"
+    },
+    {
+      "id": "30002",
+      "platform": "2",
+      "wellNumber": "2",
+      "jobDate": "2026-02-11",
+      "startDate": "2026-02-11",
+      "endDate": "2026-02-11"
+    },
+    {
+      "id": "30003",
+      "platform": "3",
+      "wellNumber": "3",
+      "jobDate": "2026-03-17",
+      "startDate": "2026-03-17",
+      "endDate": "2026-03-17"
+    },
+    {
+      "id": "60001",
+      "platform": "3",
+      "wellNumber": "3",
+      "jobDate": "2026-02-17",
+      "startDate": "2026-02-17",
+      "endDate": "2026-02-17"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tplatform\twellNumber\tjobDate\tstartDate\tendDate\n30001\t1\t1\t2026-01-14\t2026-01-14\t2026-01-14\n30002\t2\t2\t2026-02-11\t2026-02-11\t2026-02-11\n30003\t3\t3\t2026-03-17\t2026-03-17\t2026-03-17\n60001\t3\t3\t2026-02-17\t2026-02-17\t2026-02-17\n",
+  "stderr": "",
+  "execution_time_ms": 1586
+}

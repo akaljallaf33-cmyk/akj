@@ -1,0 +1,54 @@
+{
+  "query": "SELECT id, serviceLine, unit, jobDate, ct1DailyRate, operationalDays, badWeatherDays, jobBill, onRig FROM well_jobs WHERE serviceLine = 'coiled-tubing' ORDER BY id DESC LIMIT 5; SELECT * FROM oil_prices LIMIT 12;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 46LfLAkebsAYZa6.root --database P8RX3svmXia4vbzjKeD7oZ --execute SELECT id, serviceLine, unit, jobDate, ct1DailyRate, operationalDays, badWeatherDays, jobBill, onRig FROM well_jobs WHERE serviceLine = 'coiled-tubing' ORDER BY id DESC LIMIT 5; SELECT * FROM oil_prices LIMIT 12;",
+  "rows": [
+    {
+      "id": "60001",
+      "serviceLine": "coiled-tubing",
+      "unit": "NULL",
+      "jobDate": "2026-02-17",
+      "ct1DailyRate": "NULL",
+      "operationalDays": "NULL",
+      "badWeatherDays": "NULL",
+      "jobBill": "NULL",
+      "onRig": "0"
+    },
+    {
+      "id": "30003",
+      "serviceLine": "coiled-tubing",
+      "unit": "NULL",
+      "jobDate": "2026-03-17",
+      "ct1DailyRate": "NULL",
+      "operationalDays": "NULL",
+      "badWeatherDays": "NULL",
+      "jobBill": "NULL",
+      "onRig": "0"
+    },
+    {
+      "id": "30002",
+      "serviceLine": "coiled-tubing",
+      "unit": "NULL",
+      "jobDate": "2026-02-11",
+      "ct1DailyRate": "NULL",
+      "operationalDays": "NULL",
+      "badWeatherDays": "NULL",
+      "jobBill": "NULL",
+      "onRig": "0"
+    },
+    {
+      "id": "30001",
+      "serviceLine": "coiled-tubing",
+      "unit": "NULL",
+      "jobDate": "2026-01-14",
+      "ct1DailyRate": "NULL",
+      "operationalDays": "NULL",
+      "badWeatherDays": "NULL",
+      "jobBill": "NULL",
+      "onRig": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tserviceLine\tunit\tjobDate\tct1DailyRate\toperationalDays\tbadWeatherDays\tjobBill\tonRig\n60001\tcoiled-tubing\tNULL\t2026-02-17\tNULL\tNULL\tNULL\tNULL\t0\n30003\tcoiled-tubing\tNULL\t2026-03-17\tNULL\tNULL\tNULL\tNULL\t0\n30002\tcoiled-tubing\tNULL\t2026-02-11\tNULL\tNULL\tNULL\tNULL\t0\n30001\tcoiled-tubing\tNULL\t2026-01-14\tNULL\tNULL\tNULL\tNULL\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1758
+}

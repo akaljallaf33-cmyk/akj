@@ -60,10 +60,12 @@ function calcJobTotalCost(job: {
 const YEAR_END_2026 = new Date('2026-12-31');
 
 function daysUntilYearEnd(jobDate: string): number {
-  const job = new Date(jobDate);
-  const diffMs = YEAR_END_2026.getTime() - job.getTime();
+  // Production is stable at +30 days after the job, so count from Job Date + 30 days to 31 Dec 2026
+  const stableDate = new Date(jobDate);
+  stableDate.setDate(stableDate.getDate() + 30);
+  const diffMs = YEAR_END_2026.getTime() - stableDate.getTime();
   const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-  return Math.min(days, 365); // cap at 365
+  return Math.min(days, 335); // cap at 335 (365 - 30)
 }
 
 function calcROI(
@@ -347,7 +349,8 @@ function ROITable() {
             Coiled Tubing — ROI per Well
           </CardTitle>
           <p className="text-xs text-slate-500 mt-1">
-            ROI = (Production Recovery at +30 Days × Monthly Oil Price × Days remaining to 31 Dec 2026) ÷ Total Job Cost × 100%
+            ROI = (Production Recovery at +30 Days × Monthly Oil Price × Days from stable date to 31 Dec 2026) ÷ Total Job Cost × 100%
+            where stable date = Job Date + 30 days
             &nbsp;|&nbsp; Cost data is entered when adding/editing a CT job.
           </p>
         </CardHeader>

@@ -35,3 +35,4 @@
 - [x] Add Payback Period column to Finance ROI table (days to recover job cost from incremental production)
 - [x] Add global monthly decline rate setting to Finance page
 - [x] Add Decline-Adjusted ROI column alongside flat ROI for comparison
+- [x] Add yellow decline-adjusted ROI line to Monthly ROI chart in Finance page

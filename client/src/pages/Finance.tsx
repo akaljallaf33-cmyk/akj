@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DollarSign, TrendingUp, AlertCircle, Clock, ChevronDown, ChevronUp, Info, Timer } from 'lucide-react';
 import { MONTHS_2026 } from '@/lib/types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -218,9 +218,10 @@ function DeclineRateSetting({ value, onChange }: { value: number; onChange: (v: 
 
 // ─── Monthly ROI Chart ────────────────────────────────────────────────────────
 
-function MonthlyROIChart({ jobs, oilPriceMap }: {
+function MonthlyROIChart({ jobs, oilPriceMap, monthlyDeclineRate }: {
   jobs: any[];
   oilPriceMap: Record<string, number>;
+  monthlyDeclineRate: number;
 }) {
   const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -230,6 +231,7 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
       const oilPrice = oilPriceMap[m.value] ?? null;
 
       let totalROIValue = 0;
+      let totalDeclineROIValue = 0;
       let hasData = false;
 
       monthJobs.forEach(job => {
@@ -237,30 +239,50 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
         if (!totalCost || !oilPrice || job.production30Days == null || job.productionBefore == null) return;
         const recovery = job.production30Days - job.productionBefore;
         if (recovery <= 0) return;
+
+        // Flat ROI value
         const days = daysUntilYearEnd(job.endDate);
         totalROIValue += recovery * oilPrice * days;
+
+        // Decline-adjusted ROI value (month-by-month)
+        const stableDate = new Date(job.endDate);
+        stableDate.setDate(stableDate.getDate() + 30);
+        let declineVal = 0;
+        let current = new Date(stableDate);
+        while (current <= YEAR_END_2026) {
+          const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+          const periodEnd = monthEnd < YEAR_END_2026 ? monthEnd : YEAR_END_2026;
+          const daysInPeriod = Math.max(0, (periodEnd.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+          const monthsElapsed = (current.getFullYear() - stableDate.getFullYear()) * 12 + (current.getMonth() - stableDate.getMonth());
+          declineVal += recovery * Math.pow(1 - monthlyDeclineRate, monthsElapsed) * oilPrice * daysInPeriod;
+          current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+        }
+        totalDeclineROIValue += declineVal;
         hasData = true;
       });
 
       return {
         month: MONTH_LABELS[idx],
         roiValue: hasData ? Math.round(totalROIValue) : 0,
+        declineROIValue: hasData ? Math.round(totalDeclineROIValue) : 0,
         hasData,
       };
     });
-  }, [jobs, oilPriceMap]);
+  }, [jobs, oilPriceMap, monthlyDeclineRate]);
 
   const hasAnyData = chartData.some(d => d.roiValue > 0);
+  const tickFormatter = (v: number) =>
+    v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`;
 
   return (
     <Card className="border-0 shadow-sm bg-white">
       <CardHeader className="pb-3 pt-5 px-6 border-b border-slate-100">
         <CardTitle className="text-base font-bold text-[#073674] flex items-center gap-2">
           <TrendingUp className="w-4 h-4" />
-          Monthly ROI Value (USD $) — Flat Rate
+          Monthly ROI Value (USD $)
         </CardTitle>
         <p className="text-xs text-slate-500 mt-1">
-          Total production value recovered per month (Recovery at +30 Days × Oil Price × Days remaining to 31 Dec 2026, from End Date + 30 days). Jobs grouped by End Date month.
+          Blue bars = flat ROI (constant recovery). Yellow line = decline-adjusted ROI at {(monthlyDeclineRate * 100).toFixed(1)}%/month. Jobs grouped by End Date month.
         </p>
       </CardHeader>
       <CardContent className="p-4">
@@ -270,27 +292,40 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
             <p className="text-sm">No ROI data yet — add CT jobs with cost and +30 day production data</p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData} margin={{ top: 8, right: 16, left: 16, bottom: 4 }}>
+          <ResponsiveContainer width="100%" height={240}>
+            <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 16, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} interval={0} />
               <YAxis
                 tick={{ fontSize: 10, fill: '#64748b' }}
-                tickFormatter={v => v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`}
+                tickFormatter={tickFormatter}
               />
               <Tooltip
-                formatter={(value: number) => [
+                formatter={(value: number, name: string) => [
                   '$' + value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
-                  'ROI Value'
+                  name === 'roiValue' ? 'Flat ROI' : `Decline ROI (${(monthlyDeclineRate * 100).toFixed(1)}%/mo)`
                 ]}
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
               />
-              <Bar dataKey="roiValue" radius={[4, 4, 0, 0]} maxBarSize={40}>
+              <Legend
+                formatter={(value) => value === 'roiValue' ? 'Flat ROI' : `Decline ROI (${(monthlyDeclineRate * 100).toFixed(1)}%/mo)`}
+                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+              />
+              <Bar dataKey="roiValue" name="roiValue" radius={[4, 4, 0, 0]} maxBarSize={40}>
                 {chartData.map((entry, index) => (
                   <Cell key={index} fill={entry.roiValue > 0 ? '#073674' : '#e2e8f0'} />
                 ))}
               </Bar>
-            </BarChart>
+              <Line
+                type="monotone"
+                dataKey="declineROIValue"
+                name="declineROIValue"
+                stroke="#f59e0b"
+                strokeWidth={2.5}
+                dot={{ fill: '#f59e0b', r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: '#f59e0b' }}
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </CardContent>
@@ -481,7 +516,7 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
 
   return (
     <>
-      <MonthlyROIChart jobs={ctJobs} oilPriceMap={oilPriceMap} />
+      <MonthlyROIChart jobs={ctJobs} oilPriceMap={oilPriceMap} monthlyDeclineRate={monthlyDeclineRate} />
 
       {/* KPI Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

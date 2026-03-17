@@ -284,10 +284,17 @@ function ROITable() {
 
   const totalCostSum = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0);
   const totalRecovery = rows.reduce((s, r) => s + (r.recovery ?? 0), 0);
-  const avgROI = (() => {
-    const valid = rows.filter(r => r.roi != null);
-    if (!valid.length) return null;
-    return valid.reduce((s, r) => s + (r.roi ?? 0), 0) / valid.length;
+  const totalROIValue = (() => {
+    let total = 0;
+    rows.forEach(job => {
+      const month = job.job.jobDate.substring(0, 7);
+      const oilPrice = oilPriceMap[month] ?? null;
+      if (!oilPrice || job.job.production30Days == null || job.job.productionBefore == null || !job.totalCost) return;
+      const recovery = job.job.production30Days - job.job.productionBefore;
+      if (recovery <= 0) return;
+      total += recovery * oilPrice * 365;
+    });
+    return total > 0 ? total : null;
   })();
 
   return (
@@ -311,9 +318,9 @@ function ROITable() {
         </Card>
         <Card className="border-0 shadow-sm bg-white">
           <CardContent className="p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Average ROI (Annual)</p>
-            <p className={`text-2xl font-bold ${avgROI != null ? (avgROI >= 100 ? 'text-emerald-600' : 'text-amber-600') : 'text-slate-400'}`}>
-              {avgROI != null ? `${fmt(avgROI, 1)}%` : '—'}
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total ROI Value (Annual)</p>
+            <p className={`text-2xl font-bold ${totalROIValue != null ? 'text-emerald-600' : 'text-slate-400'}`}>
+              {totalROIValue != null ? fmtUSD(totalROIValue) : '—'}
             </p>
           </CardContent>
         </Card>

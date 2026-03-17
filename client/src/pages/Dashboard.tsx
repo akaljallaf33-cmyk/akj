@@ -8,8 +8,8 @@ import { Activity, Layers, Radio, Droplets, LogOut } from 'lucide-react';
 import OverviewTab from '@/components/OverviewTab';
 import ServiceLineTab from '@/components/ServiceLineTab';
 import { ServiceLine } from '@/lib/types';
-import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import { clearWiToken } from '@/components/AuthGuard';
 
 type Tab = 'overview' | ServiceLine;
 
@@ -24,14 +24,17 @@ const LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030863467/P8RX3
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const utils = trpc.useUtils();
 
-  const logoutMutation = trpc.dashboard.logout.useMutation({
-    onSuccess: () => {
-      toast.success('Signed out successfully');
-      utils.dashboard.check.invalidate();
-    },
-  });
+  const handleSignOut = () => {
+    clearWiToken();
+    toast.success('Signed out successfully');
+    // Trigger the AuthGuard logout via the global handler
+    if (typeof (window as any).__wiLogout === 'function') {
+      (window as any).__wiLogout();
+    } else {
+      window.location.reload();
+    }
+  };
 
   const activeTabDef = TABS.find(t => t.id === activeTab)!;
 
@@ -61,8 +64,7 @@ export default function Dashboard() {
                 FY 2026
               </span>
               <button
-                onClick={() => logoutMutation.mutate()}
-                disabled={logoutMutation.isPending}
+                onClick={handleSignOut}
                 className="flex items-center gap-1.5 text-blue-200 hover:text-white text-xs font-medium transition-colors px-2 py-1.5 rounded-lg hover:bg-white/10"
                 title="Sign out"
               >

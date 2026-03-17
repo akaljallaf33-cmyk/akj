@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Eye, EyeOff, Lock, User } from 'lucide-react';
 
 interface Props {
-  onSuccess: () => void;
+  onSuccess: (token: string) => void;
 }
 
 export default function Login({ onSuccess }: Props) {
@@ -13,9 +13,9 @@ export default function Login({ onSuccess }: Props) {
   const [showPassword, setShowPassword] = useState(false);
 
   const loginMutation = trpc.dashboard.login.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success('Welcome to Well Intervention Dashboard');
-      onSuccess();
+      onSuccess(data.token);
     },
     onError: (err) => {
       toast.error(err.message || 'Invalid username or password');

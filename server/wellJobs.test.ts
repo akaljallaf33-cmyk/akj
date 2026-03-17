@@ -123,21 +123,20 @@ describe("wellJobs router", () => {
 });
 
 describe("dashboard.login", () => {
-  it("returns success with correct credentials", async () => {
+  it("returns success and a token with correct credentials", async () => {
     const ctx = createCtx();
-    (ctx.res as any).cookie = vi.fn();
     const caller = appRouter.createCaller(ctx);
     const result = await caller.dashboard.login({
       username: "aaljallaf",
       password: "aljallaf",
     });
     expect(result.success).toBe(true);
-    expect((ctx.res as any).cookie).toHaveBeenCalled();
+    expect(typeof result.token).toBe("string");
+    expect(result.token.length).toBeGreaterThan(10);
   });
 
   it("throws with wrong password", async () => {
     const ctx = createCtx();
-    (ctx.res as any).cookie = vi.fn();
     const caller = appRouter.createCaller(ctx);
     await expect(
       caller.dashboard.login({ username: "aaljallaf", password: "wrongpassword" })
@@ -146,7 +145,6 @@ describe("dashboard.login", () => {
 
   it("throws with wrong username", async () => {
     const ctx = createCtx();
-    (ctx.res as any).cookie = vi.fn();
     const caller = appRouter.createCaller(ctx);
     await expect(
       caller.dashboard.login({ username: "wronguser", password: "aljallaf" })

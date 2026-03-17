@@ -32,45 +32,40 @@ export const appRouter = router({
   }),
 
   // Dashboard-specific login (username + password)
+  // Uses token returned in response body (stored in localStorage) to avoid cross-origin cookie issues
   dashboard: router({
     login: publicProcedure
       .input(z.object({ username: z.string(), password: z.string() }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input }) => {
         const validUser = input.username === ENV.dashboardUsername;
         const validPass = input.password === ENV.dashboardPassword;
         if (!validUser || !validPass) {
           throw new Error("Invalid username or password");
         }
         const token = await signWiSession(input.username);
-        const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(WI_SESSION_COOKIE, token, {
-          ...cookieOptions,
-          maxAge: ONE_YEAR_MS,
-        });
-        return { success: true };
+        return { success: true, token };
       }),
 
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(WI_SESSION_COOKIE, { ...cookieOptions, maxAge: -1 });
+    logout: publicProcedure.mutation(() => {
       return { success: true };
     }),
 
-    check: publicProcedure.query(async ({ ctx }) => {
-      try {
-        const { jwtVerify } = await import("jose");
-        const cookies = ctx.req.headers.cookie ?? "";
-        const match = cookies.match(new RegExp(`(?:^|;\\s*)${WI_SESSION_COOKIE}=([^;]*)`) );
-        const token = match?.[1];
-        if (!token) return { authenticated: false };
-        const secret = new TextEncoder().encode(ENV.cookieSecret || "wi-secret-fallback");
-        const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
-        if ((payload as any).type !== "wi_dashboard") return { authenticated: false };
-        return { authenticated: true, username: (payload as any).username as string };
-      } catch {
-        return { authenticated: false };
-      }
-    }),
+    // Verifies a token passed in the Authorization header
+    check: publicProcedure
+      .input(z.object({ token: z.string().optional() }))
+      .query(async ({ input }) => {
+        try {
+          const { jwtVerify } = await import("jose");
+          const token = input.token;
+          if (!token) return { authenticated: false };
+          const secret = new TextEncoder().encode(ENV.cookieSecret || "wi-secret-fallback");
+          const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+          if ((payload as any).type !== "wi_dashboard") return { authenticated: false };
+          return { authenticated: true, username: (payload as any).username as string };
+        } catch {
+          return { authenticated: false };
+        }
+      }),
   }),
 
   // Well Intervention Jobs CRUD

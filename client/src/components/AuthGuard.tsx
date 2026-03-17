@@ -1,15 +1,52 @@
+import { useState, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import Login from '@/pages/Login';
+
+const WI_TOKEN_KEY = 'wi_dashboard_token';
+
+export function getWiToken(): string | null {
+  return localStorage.getItem(WI_TOKEN_KEY);
+}
+
+export function setWiToken(token: string) {
+  localStorage.setItem(WI_TOKEN_KEY, token);
+}
+
+export function clearWiToken() {
+  localStorage.removeItem(WI_TOKEN_KEY);
+}
 
 interface Props {
   children: React.ReactNode;
 }
 
 export default function AuthGuard({ children }: Props) {
-  const { data, isLoading, refetch } = trpc.dashboard.check.useQuery(undefined, {
-    retry: false,
-    staleTime: 60_000,
-  });
+  const [token, setToken] = useState<string | null>(() => getWiToken());
+
+  const { data, isLoading } = trpc.dashboard.check.useQuery(
+    { token: token ?? undefined },
+    {
+      retry: false,
+      staleTime: 60_000,
+      enabled: true,
+    }
+  );
+
+  const handleLoginSuccess = (newToken: string) => {
+    setWiToken(newToken);
+    setToken(newToken);
+  };
+
+  const handleLogout = () => {
+    clearWiToken();
+    setToken(null);
+  };
+
+  // Expose logout handler globally so Dashboard can call it
+  useEffect(() => {
+    (window as any).__wiLogout = handleLogout;
+    return () => { delete (window as any).__wiLogout; };
+  }, []);
 
   if (isLoading) {
     return (
@@ -25,8 +62,8 @@ export default function AuthGuard({ children }: Props) {
     );
   }
 
-  if (!data?.authenticated) {
-    return <Login onSuccess={() => refetch()} />;
+  if (!token || !data?.authenticated) {
+    return <Login onSuccess={handleLoginSuccess} />;
   }
 
   return <>{children}</>;

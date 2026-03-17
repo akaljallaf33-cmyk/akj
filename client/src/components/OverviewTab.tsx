@@ -124,26 +124,26 @@ function JobsByServiceLine() {
   );
 }
 
-function UpliftByServiceLine() {
+function ProductionRecoveryByServiceLine() {
   const { jobs } = useData();
   const data = SL_LIST.map(sl => {
     const slJobs = jobs.filter(j => j.serviceLine === sl);
-    const upliftAfter = slJobs.reduce((sum, j) => {
+    const recoveryAfter = slJobs.reduce((sum, j) => {
       if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
       return sum;
     }, 0);
-    const uplift30 = slJobs.reduce((sum, j) => {
+    const recovery30 = slJobs.reduce((sum, j) => {
       if (j.productionBefore !== null && j.production30Days !== null) return sum + (j.production30Days - j.productionBefore);
       return sum;
     }, 0);
-    return { name: SERVICE_LINE_LABELS[sl].replace(' ', '\n'), upliftAfter, uplift30 };
+    return { name: SERVICE_LINE_LABELS[sl].replace(' ', '\n'), recoveryAfter, recovery30 };
   });
 
   return (
     <Card className="border-0 shadow-sm bg-white">
       <CardHeader className="pb-2 pt-5 px-6 border-b border-slate-100">
         <CardTitle className="text-sm font-bold text-[#073674] uppercase tracking-wider">
-          Production Uplift by Service Line (bbl/d)
+          Production Recovery by Service Line (bbl/d)
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-4 pb-4 px-4">
@@ -157,8 +157,8 @@ function UpliftByServiceLine() {
               formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toLocaleString()} bbl/d`, 'Production Recovery']}
             />
             <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-            <Bar dataKey="upliftAfter" name="After Job" fill="#073674" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="uplift30" name="+30 Days" fill="#0891b2" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="recoveryAfter" name="Recovery After Job" fill="#073674" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="recovery30" name="Recovery +30 Days" fill="#0891b2" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -174,11 +174,11 @@ export default function OverviewTab() {
   const totalPartial = jobs.filter(j => j.status === 'Partially Successful').length;
   const totalFailed = jobs.filter(j => j.status === 'Failed').length;
 
-  const totalUpliftAfter = jobs.reduce((sum, j) => {
+  const totalRecoveryAfter = jobs.reduce((sum, j) => {
     if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
     return sum;
   }, 0);
-  const totalUplift30 = jobs.reduce((sum, j) => {
+  const totalRecovery30 = jobs.reduce((sum, j) => {
     if (j.productionBefore !== null && j.production30Days !== null) return sum + (j.production30Days - j.productionBefore);
     return sum;
   }, 0);
@@ -187,7 +187,7 @@ export default function OverviewTab() {
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const thisMonthJobs = jobs.filter(j => j.jobDate.startsWith(thisMonth));
-  const thisMonthUplift = thisMonthJobs.reduce((sum, j) => {
+  const thisMonthRecovery = thisMonthJobs.reduce((sum, j) => {
     if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
     return sum;
   }, 0);
@@ -195,8 +195,8 @@ export default function OverviewTab() {
   const kpis = [
     { label: 'Total Jobs 2026', value: totalJobs, icon: Activity, color: '#073674', sub: 'All service lines' },
     { label: 'Successful Jobs', value: totalSuccessful, icon: CheckCircle2, color: '#059669', sub: `${totalJobs > 0 ? ((totalSuccessful/totalJobs)*100).toFixed(0) : 0}% success rate` },
-    { label: 'Total Uplift After Job', value: `${totalUpliftAfter >= 0 ? '+' : ''}${totalUpliftAfter.toLocaleString()}`, icon: TrendingUp, color: totalUpliftAfter >= 0 ? '#059669' : '#dc2626', sub: 'bbl/d net gain' },
-    { label: 'Sustained at +30 Days', value: `${totalUplift30 >= 0 ? '+' : ''}${totalUplift30.toLocaleString()}`, icon: TrendingUp, color: totalUplift30 >= 0 ? '#059669' : '#dc2626', sub: 'bbl/d at 30 days' },
+    { label: 'Total Production Recovery After Job', value: `${totalRecoveryAfter >= 0 ? '+' : ''}${totalRecoveryAfter.toLocaleString()}`, icon: TrendingUp, color: totalRecoveryAfter >= 0 ? '#059669' : '#dc2626', sub: 'bbl/d net gain' },
+    { label: 'Production Recovery at +30 Days', value: `${totalRecovery30 >= 0 ? '+' : ''}${totalRecovery30.toLocaleString()}`, icon: TrendingUp, color: totalRecovery30 >= 0 ? '#059669' : '#dc2626', sub: 'bbl/d at 30 days' },
   ];
 
   return (
@@ -205,7 +205,7 @@ export default function OverviewTab() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-xl px-6 py-4 flex items-center justify-between ${thisMonthUplift >= 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}
+        className={`rounded-xl px-6 py-4 flex items-center justify-between ${thisMonthRecovery >= 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}
       >
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-0.5">
@@ -216,15 +216,15 @@ export default function OverviewTab() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {thisMonthUplift >= 0
+          {thisMonthRecovery >= 0
             ? <TrendingUp className="w-8 h-8 text-emerald-500" />
             : <TrendingDown className="w-8 h-8 text-red-500" />
           }
           <div className="text-right">
-            <p className={`text-3xl font-bold font-mono ${thisMonthUplift >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {thisMonthUplift >= 0 ? '+' : ''}{thisMonthUplift.toLocaleString()}
+            <p className={`text-3xl font-bold font-mono ${thisMonthRecovery >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {thisMonthRecovery >= 0 ? '+' : ''}{thisMonthRecovery.toLocaleString()}
             </p>
-            <p className="text-xs text-slate-500">bbl/d {thisMonthUplift >= 0 ? 'added to' : 'lost from'} production</p>
+            <p className="text-xs text-slate-500">bbl/d {thisMonthRecovery >= 0 ? 'added to' : 'lost from'} production</p>
           </div>
         </div>
       </motion.div>
@@ -276,7 +276,7 @@ export default function OverviewTab() {
         <MonthlyImpactChart />
         <div className="space-y-4">
           <JobsByServiceLine />
-          <UpliftByServiceLine />
+          <ProductionRecoveryByServiceLine />
         </div>
       </div>
     </div>

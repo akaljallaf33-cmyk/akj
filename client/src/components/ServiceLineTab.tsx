@@ -222,6 +222,37 @@ export default function ServiceLineTab({ serviceLine }: Props) {
         </div>
       )}
 
+      {/* Job Type Breakdown */}
+      {jobs.length > 0 && (() => {
+        const typeCounts: Record<string, number> = {};
+        jobs.forEach(j => {
+          typeCounts[j.jobType] = (typeCounts[j.jobType] || 0) + 1;
+        });
+        const typeData = Object.entries(typeCounts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([type, count]) => ({ type, count }));
+        return (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+            <div className="bg-white rounded-xl shadow-sm border-0 px-6 pt-5 pb-5">
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: accentColor }}>Job Type Breakdown</p>
+              <p className="text-xs text-slate-400 mb-4">Number of interventions performed per job type — {label}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {typeData.map(({ type, count }) => (
+                  <div
+                    key={type}
+                    className="flex flex-col items-center justify-center rounded-lg py-4 px-3 text-center"
+                    style={{ backgroundColor: `${accentColor}10`, border: `1.5px solid ${accentColor}25` }}
+                  >
+                    <span className="text-3xl font-bold font-mono" style={{ color: accentColor }}>{count}</span>
+                    <span className="text-xs font-semibold text-slate-600 mt-1 leading-tight">{type}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        );
+      })()}
+
       {/* Table Card */}
       <Card className="border-0 shadow-sm bg-white">
         <CardHeader className="flex flex-row items-center justify-between pb-3 pt-5 px-6 border-b border-slate-100">

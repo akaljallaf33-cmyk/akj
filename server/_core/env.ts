@@ -10,4 +10,7 @@ export const ENV = {
   // Dashboard login credentials
   dashboardUsername: process.env.DASHBOARD_USERNAME ?? "aaljallaf",
   dashboardPassword: process.env.DASHBOARD_PASSWORD ?? "aljallaf",
+  // Guest credentials (read-only)
+  guestUsername: process.env.GUEST_USERNAME ?? "guest",
+  guestPassword: process.env.GUEST_PASSWORD ?? "guest",
 };

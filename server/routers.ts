@@ -9,9 +9,9 @@ import { SignJWT } from "jose";
 
 const WI_SESSION_COOKIE = "wi_session";
 
-async function signWiSession(username: string): Promise<string> {
+async function signWiSession(username: string, role: 'admin' | 'guest' = 'admin'): Promise<string> {
   const secret = new TextEncoder().encode(ENV.cookieSecret || "wi-secret-fallback");
-  return new SignJWT({ username, type: "wi_dashboard" })
+  return new SignJWT({ username, role, type: "wi_dashboard" })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(Math.floor((Date.now() + ONE_YEAR_MS) / 1000))
     .sign(secret);
@@ -37,13 +37,14 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ username: z.string(), password: z.string() }))
       .mutation(async ({ input }) => {
-        const validUser = input.username === ENV.dashboardUsername;
-        const validPass = input.password === ENV.dashboardPassword;
-        if (!validUser || !validPass) {
+        const isAdmin = input.username === ENV.dashboardUsername && input.password === ENV.dashboardPassword;
+        const isGuest = input.username === ENV.guestUsername && input.password === ENV.guestPassword;
+        if (!isAdmin && !isGuest) {
           throw new Error("Invalid username or password");
         }
-        const token = await signWiSession(input.username);
-        return { success: true, token };
+        const role = isAdmin ? 'admin' : 'guest';
+        const token = await signWiSession(input.username, role);
+        return { success: true, token, role };
       }),
 
     logout: publicProcedure.mutation(() => {
@@ -61,7 +62,7 @@ export const appRouter = router({
           const secret = new TextEncoder().encode(ENV.cookieSecret || "wi-secret-fallback");
           const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
           if ((payload as any).type !== "wi_dashboard") return { authenticated: false };
-          return { authenticated: true, username: (payload as any).username as string };
+          return { authenticated: true, username: (payload as any).username as string, role: ((payload as any).role ?? 'admin') as 'admin' | 'guest' };
         } catch {
           return { authenticated: false };
         }

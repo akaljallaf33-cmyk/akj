@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight } from 'lucide-react';
 import { WellJob, ServiceLine, SERVICE_LINE_LABELS } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
+import { useRole } from '@/hooks/useRole';
 import JobDialog from './JobDialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -65,6 +66,7 @@ function NumCell({ val }: { val: number | null }) {
 export default function ServiceLineTab({ serviceLine }: Props) {
   const { getJobsByServiceLine, deleteJob } = useData();
   const jobs = getJobsByServiceLine(serviceLine);
+  const { isAdmin } = useRole();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editJob, setEditJob] = useState<WellJob | null>(null);
@@ -263,12 +265,14 @@ export default function ServiceLineTab({ serviceLine }: Props) {
               {totalJobs} {totalJobs === 1 ? 'job' : 'jobs'}
             </span>
           </CardTitle>
-          <Button
-            onClick={handleAdd}
-            className="bg-[#073674] hover:bg-[#052a5c] text-white text-sm h-8 px-4 gap-1.5"
-          >
-            <Plus className="w-4 h-4" /> Add Job
-          </Button>
+          {isAdmin && (
+            <Button
+              onClick={handleAdd}
+              className="bg-[#073674] hover:bg-[#052a5c] text-white text-sm h-8 px-4 gap-1.5"
+            >
+              <Plus className="w-4 h-4" /> Add Job
+            </Button>
+          )}
         </CardHeader>
 
         <CardContent className="p-0">
@@ -298,7 +302,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">+30 Days (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Production Recovery</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</TableHead>
+                    {isAdmin && <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -338,24 +342,26 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                         <TableCell className="text-right"><NumCell val={job.production30Days} /></TableCell>
                         <TableCell><ProductionRecoveryCell before={job.productionBefore} after={job.productionAfter} /></TableCell>
                         <TableCell><StatusBadge status={job.status} /></TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost" size="icon"
-                              className="h-7 w-7 text-slate-400 hover:text-[#073674] hover:bg-blue-50"
-                              onClick={() => handleEdit(job)}
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost" size="icon"
-                              className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50"
-                              onClick={() => setDeleteId(job.id)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-7 w-7 text-slate-400 hover:text-[#073674] hover:bg-blue-50"
+                                onClick={() => handleEdit(job)}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                                onClick={() => setDeleteId(job.id)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
                       </motion.tr>
                     ))}
                   </AnimatePresence>

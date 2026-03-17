@@ -3,17 +3,24 @@ import { trpc } from '@/lib/trpc';
 import Login from '@/pages/Login';
 
 const WI_TOKEN_KEY = 'wi_dashboard_token';
+const WI_ROLE_KEY = 'wi_dashboard_role';
+
+export function getWiRole(): 'admin' | 'guest' {
+  return (localStorage.getItem(WI_ROLE_KEY) as 'admin' | 'guest') ?? 'admin';
+}
 
 export function getWiToken(): string | null {
   return localStorage.getItem(WI_TOKEN_KEY);
 }
 
-export function setWiToken(token: string) {
+export function setWiToken(token: string, role?: 'admin' | 'guest') {
   localStorage.setItem(WI_TOKEN_KEY, token);
+  if (role) localStorage.setItem(WI_ROLE_KEY, role);
 }
 
 export function clearWiToken() {
   localStorage.removeItem(WI_TOKEN_KEY);
+  localStorage.removeItem(WI_ROLE_KEY);
 }
 
 interface Props {
@@ -32,8 +39,8 @@ export default function AuthGuard({ children }: Props) {
     }
   );
 
-  const handleLoginSuccess = (newToken: string) => {
-    setWiToken(newToken);
+  const handleLoginSuccess = (newToken: string, role?: 'admin' | 'guest') => {
+    setWiToken(newToken, role);
     setToken(newToken);
   };
 
@@ -64,6 +71,13 @@ export default function AuthGuard({ children }: Props) {
 
   if (!token || !data?.authenticated) {
     return <Login onSuccess={handleLoginSuccess} />;
+  }
+
+  // Expose role globally so components can check it
+  const role = data.role ?? 'admin';
+  if (typeof window !== 'undefined') {
+    (window as any).__wiRole = role;
+    localStorage.setItem(WI_ROLE_KEY, role);
   }
 
   return <>{children}</>;

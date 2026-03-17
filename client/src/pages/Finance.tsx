@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DollarSign, TrendingUp, AlertCircle, Clock, ChevronDown, ChevronUp, Info, Timer } from 'lucide-react';
 import { MONTHS_2026 } from '@/lib/types';
+import { useRole } from '@/hooks/useRole';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -336,6 +337,7 @@ function MonthlyROIChart({ jobs, oilPriceMap, monthlyDeclineRate }: {
 // ─── Oil Price Panel (collapsible) ───────────────────────────────────────────
 
 function OilPricePanel() {
+  const { isAdmin } = useRole();
   const { data: oilPrices = [], refetch } = trpc.finance.listOilPrices.useQuery();
   const upsertMutation = trpc.finance.upsertOilPrice.useMutation({
     onSuccess: () => { refetch(); toast.success('Oil price updated'); },
@@ -373,7 +375,7 @@ function OilPricePanel() {
         <div className="flex items-center gap-2">
           <DollarSign className="w-4 h-4 text-[#073674]" />
           <span className="text-sm font-bold text-[#073674]">Monthly Average Brent Crude Oil Price (USD/bbl)</span>
-          <span className="text-xs text-slate-400 ml-2">— click to edit</span>
+          {isAdmin && <span className="text-xs text-slate-400 ml-2">— click to edit</span>}
         </div>
         {open ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
       </button>
@@ -387,7 +389,7 @@ function OilPricePanel() {
               return (
                 <div key={m.value} className="flex flex-col items-center gap-1">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{shortLabel}</span>
-                  {isEditing ? (
+                  {isAdmin && isEditing ? (
                     <div className="flex flex-col gap-1 w-full">
                       <Input
                         type="number"
@@ -402,11 +404,13 @@ function OilPricePanel() {
                     </div>
                   ) : (
                     <button
-                      onClick={() => startEdit(m.value)}
-                      className={`w-full text-center rounded-lg border px-2 py-2 text-sm font-semibold transition-colors cursor-pointer ${
+                      onClick={() => isAdmin ? startEdit(m.value) : undefined}
+                      className={`w-full text-center rounded-lg border px-2 py-2 text-sm font-semibold transition-colors ${
+                        isAdmin ? 'cursor-pointer' : 'cursor-default'
+                      } ${
                         price
                           ? 'bg-[#073674]/5 border-[#073674]/20 text-[#073674] hover:bg-[#073674]/10'
-                          : 'bg-slate-50 border-dashed border-slate-300 text-slate-400 hover:bg-slate-100'
+                          : 'bg-slate-50 border-dashed border-slate-300 text-slate-400'
                       }`}
                     >
                       {price ? `$${price}` : '—'}

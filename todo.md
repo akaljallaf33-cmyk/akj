@@ -37,3 +37,6 @@
 - [x] Add Decline-Adjusted ROI column alongside flat ROI for comparison
 - [x] Add yellow decline-adjusted ROI line to Monthly ROI chart in Finance page
 - [x] Change Flat ROI and Decline ROI columns from % to $ in Finance table
+- [x] Create guest user account (username: guest, password: guest) with read-only role
+- [x] Hide add/edit/delete buttons for guest users in all tabs
+- [x] Allow guest users to change the decline rate only

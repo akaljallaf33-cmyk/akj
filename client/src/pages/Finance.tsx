@@ -57,17 +57,28 @@ function calcJobTotalCost(job: {
   return total > 0 ? total : null;
 }
 
+const YEAR_END_2026 = new Date('2026-12-31');
+
+function daysUntilYearEnd(jobDate: string): number {
+  const job = new Date(jobDate);
+  const diffMs = YEAR_END_2026.getTime() - job.getTime();
+  const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  return Math.min(days, 365); // cap at 365
+}
+
 function calcROI(
   production30Days: number | null | undefined,
   productionBefore: number | null | undefined,
   oilPrice: number | null | undefined,
-  totalCost: number | null
+  totalCost: number | null,
+  jobDate?: string
 ): number | null {
   if (production30Days == null || productionBefore == null || oilPrice == null || !totalCost) return null;
   const recovery = production30Days - productionBefore;
   if (recovery <= 0) return null;
-  const annualValue = recovery * oilPrice * 365;
-  return (annualValue / totalCost) * 100;
+  const days = jobDate ? daysUntilYearEnd(jobDate) : 365;
+  const periodValue = recovery * oilPrice * days;
+  return (periodValue / totalCost) * 100;
 }
 
 // ─── Monthly ROI Chart ────────────────────────────────────────────────────────
@@ -91,8 +102,9 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
         if (!totalCost || !oilPrice || job.production30Days == null || job.productionBefore == null) return;
         const recovery = job.production30Days - job.productionBefore;
         if (recovery <= 0) return;
-        const annualValue = recovery * oilPrice * 365;
-        totalROIValue += annualValue;
+        const days = daysUntilYearEnd(job.jobDate);
+        const periodValue = recovery * oilPrice * days;
+        totalROIValue += periodValue;
         hasData = true;
       });
 
@@ -263,7 +275,7 @@ function ROITable() {
     const month = job.jobDate.substring(0, 7);
     const oilPrice = oilPriceMap[month] ?? null;
     const totalCost = calcJobTotalCost(job);
-    const roi = calcROI(job.production30Days, job.productionBefore, oilPrice, totalCost);
+    const roi = calcROI(job.production30Days, job.productionBefore, oilPrice, totalCost, job.jobDate);
     const recovery = (job.production30Days != null && job.productionBefore != null)
       ? job.production30Days - job.productionBefore
       : null;
@@ -292,7 +304,8 @@ function ROITable() {
       if (!oilPrice || job.job.production30Days == null || job.job.productionBefore == null || !job.totalCost) return;
       const recovery = job.job.production30Days - job.job.productionBefore;
       if (recovery <= 0) return;
-      total += recovery * oilPrice * 365;
+      const days = daysUntilYearEnd(job.job.jobDate);
+      total += recovery * oilPrice * days;
     });
     return total > 0 ? total : null;
   })();
@@ -334,7 +347,7 @@ function ROITable() {
             Coiled Tubing — ROI per Well
           </CardTitle>
           <p className="text-xs text-slate-500 mt-1">
-            ROI = (Production Recovery at +30 Days × Monthly Oil Price × 365) ÷ Total Job Cost × 100%
+            ROI = (Production Recovery at +30 Days × Monthly Oil Price × Days remaining to 31 Dec 2026) ÷ Total Job Cost × 100%
             &nbsp;|&nbsp; Cost data is entered when adding/editing a CT job.
           </p>
         </CardHeader>

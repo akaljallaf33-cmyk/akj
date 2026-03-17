@@ -1,16 +1,16 @@
 // Well Intervention Dashboard — Finance & ROI Page
 // Dragon Oil brand: #073674 blue, white, clean corporate style
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, AlertCircle, Clock } from 'lucide-react';
+import { DollarSign, TrendingUp, AlertCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { MONTHS_2026 } from '@/lib/types';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -70,7 +70,87 @@ function calcROI(
   return (annualValue / totalCost) * 100;
 }
 
-// ─── Monthly Oil Price Panel ──────────────────────────────────────────────────
+// ─── Monthly ROI Chart ────────────────────────────────────────────────────────
+
+function MonthlyROIChart({ jobs, oilPriceMap }: {
+  jobs: any[];
+  oilPriceMap: Record<string, number>;
+}) {
+  const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const chartData = useMemo(() => {
+    return MONTHS_2026.map((m, idx) => {
+      const monthJobs = jobs.filter(j => j.jobDate.startsWith(m.value));
+      const oilPrice = oilPriceMap[m.value] ?? null;
+
+      let totalROIValue = 0;
+      let hasData = false;
+
+      monthJobs.forEach(job => {
+        const totalCost = calcJobTotalCost(job);
+        if (!totalCost || !oilPrice || job.production30Days == null || job.productionBefore == null) return;
+        const recovery = job.production30Days - job.productionBefore;
+        if (recovery <= 0) return;
+        const annualValue = recovery * oilPrice * 365;
+        totalROIValue += annualValue;
+        hasData = true;
+      });
+
+      return {
+        month: MONTH_LABELS[idx],
+        roiValue: hasData ? Math.round(totalROIValue) : 0,
+        hasData,
+      };
+    });
+  }, [jobs, oilPriceMap]);
+
+  const hasAnyData = chartData.some(d => d.roiValue > 0);
+
+  return (
+    <Card className="border-0 shadow-sm bg-white">
+      <CardHeader className="pb-3 pt-5 px-6 border-b border-slate-100">
+        <CardTitle className="text-base font-bold text-[#073674] flex items-center gap-2">
+          <TrendingUp className="w-4 h-4" />
+          Monthly ROI Value (USD $)
+        </CardTitle>
+        <p className="text-xs text-slate-500 mt-1">Total annual production value recovered per month from all CT interventions (Recovery at +30 Days × Oil Price × 365 days).</p>
+      </CardHeader>
+      <CardContent className="p-4">
+        {!hasAnyData ? (
+          <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+            <AlertCircle className="w-7 h-7 mb-2 text-slate-300" />
+            <p className="text-sm">No ROI data yet — add CT jobs with cost and +30 day production data</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={chartData} margin={{ top: 8, right: 16, left: 16, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} interval={0} />
+              <YAxis
+                tick={{ fontSize: 10, fill: '#64748b' }}
+                tickFormatter={v => v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`}
+              />
+              <Tooltip
+                formatter={(value: number) => [
+                  '$' + value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+                  'ROI Value'
+                ]}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+              />
+              <Bar dataKey="roiValue" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                {chartData.map((entry, index) => (
+                  <Cell key={index} fill={entry.roiValue > 0 ? '#073674' : '#e2e8f0'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Oil Price Panel (collapsible) ───────────────────────────────────────────
 
 function OilPricePanel() {
   const { data: oilPrices = [], refetch } = trpc.finance.listOilPrices.useQuery();
@@ -85,6 +165,7 @@ function OilPricePanel() {
     return m;
   }, [oilPrices]);
 
+  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [val, setVal] = useState('');
 
@@ -102,52 +183,58 @@ function OilPricePanel() {
 
   return (
     <Card className="border-0 shadow-sm bg-white">
-      <CardHeader className="pb-3 pt-5 px-6 border-b border-slate-100">
-        <CardTitle className="text-base font-bold text-[#073674] flex items-center gap-2">
-          <DollarSign className="w-4 h-4" />
-          Monthly Average Brent Crude Oil Price (USD/bbl)
-        </CardTitle>
-        <p className="text-xs text-slate-500 mt-1">Enter the monthly average Brent crude price for each month. Used to calculate ROI for all jobs.</p>
-      </CardHeader>
-      <CardContent className="p-4">
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-          {MONTHS_2026.map(m => {
-            const shortLabel = m.label.split(' ')[0].substring(0, 3);
-            const price = priceMap[m.value];
-            const isEditing = editing === m.value;
-            return (
-              <div key={m.value} className="flex flex-col items-center gap-1">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{shortLabel}</span>
-                {isEditing ? (
-                  <div className="flex flex-col gap-1 w-full">
-                    <Input
-                      type="number"
-                      min="1"
-                      value={val}
-                      onChange={e => setVal(e.target.value)}
-                      className="h-8 text-center text-sm border-[#073674] focus:border-[#073674] px-1"
-                      autoFocus
-                      onKeyDown={e => { if (e.key === 'Enter') save(m.value); if (e.key === 'Escape') setEditing(null); }}
-                    />
-                    <Button size="sm" className="h-6 text-xs bg-[#073674] hover:bg-[#052a5c] text-white px-2" onClick={() => save(m.value)}>Save</Button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => startEdit(m.value)}
-                    className={`w-full text-center rounded-lg border px-2 py-2 text-sm font-semibold transition-colors cursor-pointer ${
-                      price
-                        ? 'bg-[#073674]/5 border-[#073674]/20 text-[#073674] hover:bg-[#073674]/10'
-                        : 'bg-slate-50 border-dashed border-slate-300 text-slate-400 hover:bg-slate-100'
-                    }`}
-                  >
-                    {price ? `$${price}` : '—'}
-                  </button>
-                )}
-              </div>
-            );
-          })}
+      <button
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors"
+        onClick={() => setOpen(o => !o)}
+      >
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-[#073674]" />
+          <span className="text-sm font-bold text-[#073674]">Monthly Average Brent Crude Oil Price (USD/bbl)</span>
+          <span className="text-xs text-slate-400 ml-2">— click to edit</span>
         </div>
-      </CardContent>
+        {open ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+      </button>
+      {open && (
+        <CardContent className="p-4 border-t border-slate-100">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+            {MONTHS_2026.map(m => {
+              const shortLabel = m.label.split(' ')[0].substring(0, 3);
+              const price = priceMap[m.value];
+              const isEditing = editing === m.value;
+              return (
+                <div key={m.value} className="flex flex-col items-center gap-1">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{shortLabel}</span>
+                  {isEditing ? (
+                    <div className="flex flex-col gap-1 w-full">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={val}
+                        onChange={e => setVal(e.target.value)}
+                        className="h-8 text-center text-sm border-[#073674] focus:border-[#073674] px-1"
+                        autoFocus
+                        onKeyDown={e => { if (e.key === 'Enter') save(m.value); if (e.key === 'Escape') setEditing(null); }}
+                      />
+                      <Button size="sm" className="h-6 text-xs bg-[#073674] hover:bg-[#052a5c] text-white px-2" onClick={() => save(m.value)}>Save</Button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => startEdit(m.value)}
+                      className={`w-full text-center rounded-lg border px-2 py-2 text-sm font-semibold transition-colors cursor-pointer ${
+                        price
+                          ? 'bg-[#073674]/5 border-[#073674]/20 text-[#073674] hover:bg-[#073674]/10'
+                          : 'bg-slate-50 border-dashed border-slate-300 text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      {price ? `$${price}` : '—'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -170,7 +257,9 @@ function ROITable() {
     [jobs]
   );
 
-  const rows = useMemo(() => ctJobs.map(job => {
+  if (jobsLoading) return <div className="py-12 text-center text-slate-400">Loading...</div>;
+
+  const rows = ctJobs.map(job => {
     const month = job.jobDate.substring(0, 7);
     const oilPrice = oilPriceMap[month] ?? null;
     const totalCost = calcJobTotalCost(job);
@@ -191,7 +280,7 @@ function ROITable() {
     }
 
     return { job, oilPrice, totalCost, roi, recovery, jackUpCost, rigCost };
-  }), [ctJobs, oilPriceMap]);
+  });
 
   const totalCostSum = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0);
   const totalRecovery = rows.reduce((s, r) => s + (r.recovery ?? 0), 0);
@@ -201,10 +290,11 @@ function ROITable() {
     return valid.reduce((s, r) => s + (r.roi ?? 0), 0) / valid.length;
   })();
 
-  if (jobsLoading) return <div className="py-12 text-center text-slate-400">Loading...</div>;
-
   return (
     <>
+      {/* Monthly ROI Chart */}
+      <MonthlyROIChart jobs={ctJobs} oilPriceMap={oilPriceMap} />
+
       {/* KPI Summary */}
       <div className="grid grid-cols-3 gap-4 mb-4">
         <Card className="border-0 shadow-sm bg-white">
@@ -339,11 +429,11 @@ export default function Finance() {
         </div>
       </div>
 
-      {/* Oil Price Panel */}
-      <OilPricePanel />
-
-      {/* ROI Table */}
+      {/* Monthly ROI Chart + ROI Table */}
       <ROITable />
+
+      {/* Oil Price Panel (collapsible, at bottom) */}
+      <OilPricePanel />
     </div>
   );
 }

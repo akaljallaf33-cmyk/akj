@@ -51,6 +51,12 @@ vi.mock("./db", () => ({
   deleteWellJob: vi.fn().mockResolvedValue({ success: true }),
   upsertUser: vi.fn(),
   getUserByOpenId: vi.fn(),
+  getAllJobFinance: vi.fn().mockResolvedValue([]),
+  getJobFinanceByWellJobId: vi.fn().mockResolvedValue(null),
+  upsertJobFinance: vi.fn().mockImplementation(async (data) => ({ id: 1, ...data, createdAt: new Date(), updatedAt: new Date() })),
+  deleteJobFinance: vi.fn().mockResolvedValue({ success: true }),
+  getAllOilPrices: vi.fn().mockResolvedValue([]),
+  upsertOilPrice: vi.fn().mockImplementation(async (data) => ({ id: 1, ...data, createdAt: new Date(), updatedAt: new Date() })),
 }));
 
 function createCtx(): TrpcContext {
@@ -119,6 +125,67 @@ describe("wellJobs router", () => {
         status: "Successful",
       })
     ).rejects.toThrow();
+  });
+});
+
+describe("finance.listOilPrices", () => {
+  it("returns an array", async () => {
+    const caller = appRouter.createCaller(createCtx());
+    const result = await caller.finance.listOilPrices();
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("finance.listJobFinance", () => {
+  it("returns an array", async () => {
+    const caller = appRouter.createCaller(createCtx());
+    const result = await caller.finance.listJobFinance();
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("finance.upsertOilPrice input validation", () => {
+  it("rejects invalid month format", async () => {
+    const caller = appRouter.createCaller(createCtx());
+    await expect(
+      caller.finance.upsertOilPrice({ month: "January 2026", avgPrice: 75 })
+    ).rejects.toThrow();
+  });
+
+  it("rejects zero price", async () => {
+    const caller = appRouter.createCaller(createCtx());
+    await expect(
+      caller.finance.upsertOilPrice({ month: "2026-01", avgPrice: 0 })
+    ).rejects.toThrow();
+  });
+
+  it("accepts valid month and price", async () => {
+    const caller = appRouter.createCaller(createCtx());
+    const result = await caller.finance.upsertOilPrice({ month: "2026-03", avgPrice: 75 });
+    expect(result).toBeDefined();
+  });
+});
+
+describe("finance.upsertJobFinance input validation", () => {
+  it("accepts valid CT-1 finance data", async () => {
+    const caller = appRouter.createCaller(createCtx());
+    const result = await caller.finance.upsertJobFinance({
+      wellJobId: 1,
+      ct1DailyRate: 45000,
+      operationalDays: 3,
+      badWeatherDays: 1,
+      jobBill: 120000,
+    });
+    expect(result).toBeDefined();
+  });
+
+  it("accepts CT-2 finance data (bill only)", async () => {
+    const caller = appRouter.createCaller(createCtx());
+    const result = await caller.finance.upsertJobFinance({
+      wellJobId: 2,
+      jobBill: 85000,
+    });
+    expect(result).toBeDefined();
   });
 });
 

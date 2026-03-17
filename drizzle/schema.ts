@@ -46,3 +46,33 @@ export const wellJobs = mysqlTable('well_jobs', {
 
 export type WellJobRow = typeof wellJobs.$inferSelect;
 export type InsertWellJob = typeof wellJobs.$inferInsert;
+
+// Finance: per-job cost data linked to a well job
+export const jobFinance = mysqlTable('job_finance', {
+  id: int('id').autoincrement().primaryKey(),
+  wellJobId: int('wellJobId').notNull().unique(), // 1-to-1 with well_jobs
+  // CT-1 specific fields (jack-up)
+  ct1DailyRate: int('ct1DailyRate'),       // USD/day
+  operationalDays: int('operationalDays'), // days at full rate
+  badWeatherDays: int('badWeatherDays'),   // days at 50% rate
+  // Shared
+  jobBill: int('jobBill'),                 // USD — additional job cost
+  notes: text('notes'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+});
+
+export type JobFinanceRow = typeof jobFinance.$inferSelect;
+export type InsertJobFinance = typeof jobFinance.$inferInsert;
+
+// Finance: monthly average oil prices (Brent crude, USD/bbl)
+export const oilPrices = mysqlTable('oil_prices', {
+  id: int('id').autoincrement().primaryKey(),
+  month: varchar('month', { length: 7 }).notNull().unique(), // e.g. '2026-01'
+  avgPrice: int('avgPrice').notNull(),                       // USD/bbl
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+});
+
+export type OilPriceRow = typeof oilPrices.$inferSelect;
+export type InsertOilPrice = typeof oilPrices.$inferInsert;

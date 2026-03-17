@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertWellJob, users, wellJobs } from "../drizzle/schema";
+import { InsertJobFinance, InsertOilPrice, InsertUser, InsertWellJob, jobFinance, oilPrices, users, wellJobs } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -121,4 +121,60 @@ export async function deleteWellJob(id: number) {
   if (!db) throw new Error('Database not available');
   await db.delete(wellJobs).where(eq(wellJobs.id, id));
   return { success: true };
+}
+
+// ─── Job Finance ─────────────────────────────────────────────────────────────
+
+export async function getAllJobFinance() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(jobFinance);
+}
+
+export async function getJobFinanceByWellJobId(wellJobId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(jobFinance).where(eq(jobFinance.wellJobId, wellJobId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function upsertJobFinance(data: InsertJobFinance) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.insert(jobFinance).values(data).onDuplicateKeyUpdate({
+    set: {
+      ct1DailyRate: data.ct1DailyRate,
+      operationalDays: data.operationalDays,
+      badWeatherDays: data.badWeatherDays,
+      jobBill: data.jobBill,
+      notes: data.notes,
+    },
+  });
+  const rows = await db.select().from(jobFinance).where(eq(jobFinance.wellJobId, data.wellJobId)).limit(1);
+  return rows[0];
+}
+
+export async function deleteJobFinance(wellJobId: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(jobFinance).where(eq(jobFinance.wellJobId, wellJobId));
+  return { success: true };
+}
+
+// ─── Oil Prices ───────────────────────────────────────────────────────────────
+
+export async function getAllOilPrices() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(oilPrices).orderBy(oilPrices.month);
+}
+
+export async function upsertOilPrice(data: InsertOilPrice) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.insert(oilPrices).values(data).onDuplicateKeyUpdate({
+    set: { avgPrice: data.avgPrice },
+  });
+  const rows = await db.select().from(oilPrices).where(eq(oilPrices.month, data.month)).limit(1);
+  return rows[0];
 }

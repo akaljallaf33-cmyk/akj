@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
-import { createWellJob, deleteWellJob, getAllWellJobs, updateWellJob } from "./db";
+import { createWellJob, deleteWellJob, getAllJobFinance, getAllOilPrices, getAllWellJobs, upsertJobFinance, upsertOilPrice, updateWellJob } from "./db";
 import { ENV } from "./_core/env";
 import { SignJWT } from "jose";
 
@@ -116,6 +116,43 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int() }))
       .mutation(async ({ input }) => {
         return deleteWellJob(input.id);
+      }),
+  }),
+
+  // Finance: per-job cost data and monthly oil prices
+  finance: router({
+    // Get all job finance records
+    listJobFinance: publicProcedure.query(async () => {
+      return getAllJobFinance();
+    }),
+
+    // Upsert finance data for a specific well job
+    upsertJobFinance: publicProcedure
+      .input(z.object({
+        wellJobId: z.number().int(),
+        ct1DailyRate: z.number().int().nullable().optional(),
+        operationalDays: z.number().int().nullable().optional(),
+        badWeatherDays: z.number().int().nullable().optional(),
+        jobBill: z.number().int().nullable().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return upsertJobFinance(input);
+      }),
+
+    // Get all monthly oil prices
+    listOilPrices: publicProcedure.query(async () => {
+      return getAllOilPrices();
+    }),
+
+    // Set or update monthly average oil price
+    upsertOilPrice: publicProcedure
+      .input(z.object({
+        month: z.string().regex(/^\d{4}-\d{2}$/),
+        avgPrice: z.number().int().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        return upsertOilPrice(input);
       }),
   }),
 });

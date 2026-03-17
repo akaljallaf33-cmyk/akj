@@ -31,3 +31,4 @@
 - [ ] Add "Pending +30 Days" indicator for wells missing 30-day data
 - [ ] Add platform filter dropdown for large datasets
 - [ ] Publish the dashboard to get shareable link
+- [x] Replace "Jobs by Service Line" chart in Overview with Production Recovery Leaderboard (top wells by uplift)

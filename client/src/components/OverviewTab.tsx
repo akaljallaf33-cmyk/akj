@@ -5,11 +5,11 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Legend, Cell, PieChart, Pie
+  Legend, Cell
 } from 'recharts';
 import { useData } from '@/contexts/DataContext';
 import { SERVICE_LINE_LABELS, ServiceLine, MONTHS_2026 } from '@/lib/types';
-import { TrendingUp, TrendingDown, Activity, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, CheckCircle2, AlertCircle, XCircle, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const SL_COLORS: Record<ServiceLine, string> = {
@@ -90,42 +90,120 @@ function MonthlyImpactChart() {
   );
 }
 
-function JobsByServiceLine() {
-  const { jobs } = useData();
-  const data = SL_LIST.map(sl => ({
-    name: SERVICE_LINE_LABELS[sl],
-    value: jobs.filter(j => j.serviceLine === sl).length,
-    color: SL_COLORS[sl],
-  })).filter(d => d.value > 0);
+// ─── Production Recovery Leaderboard ─────────────────────────────────────────
 
-  if (data.length === 0) return null;
+function ProductionRecoveryLeaderboard() {
+  const { jobs } = useData();
+
+  const ranked = useMemo(() => {
+    return jobs
+      .filter(j => j.productionBefore !== null && j.productionAfter !== null)
+      .map(j => ({
+        platform: j.platform,
+        wellNumber: j.wellNumber,
+        serviceLine: j.serviceLine,
+        upliftAfter: (j.productionAfter ?? 0) - (j.productionBefore ?? 0),
+        uplift30: j.production30Days != null ? (j.production30Days - (j.productionBefore ?? 0)) : null,
+        status: j.status,
+      }))
+      .sort((a, b) => b.upliftAfter - a.upliftAfter)
+      .slice(0, 8);
+  }, [jobs]);
+
+  const medalColors = ['#f59e0b', '#94a3b8', '#cd7f32'];
+
+  if (ranked.length === 0) {
+    return (
+      <Card className="border-0 shadow-sm bg-white">
+        <CardHeader className="pb-2 pt-5 px-6 border-b border-slate-100">
+          <CardTitle className="text-sm font-bold text-[#073674] uppercase tracking-wider flex items-center gap-2">
+            <Trophy className="w-4 h-4" />
+            Top Wells — Production Recovery
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-8 pb-8 flex flex-col items-center text-slate-400">
+          <Trophy className="w-8 h-8 mb-2 text-slate-200" />
+          <p className="text-sm">No production data yet</p>
+          <p className="text-xs mt-1">Add jobs with Before/After production to see rankings</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-0 shadow-sm bg-white">
       <CardHeader className="pb-2 pt-5 px-6 border-b border-slate-100">
-        <CardTitle className="text-sm font-bold text-[#073674] uppercase tracking-wider">Jobs by Service Line</CardTitle>
+        <CardTitle className="text-sm font-bold text-[#073674] uppercase tracking-wider flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-amber-500" />
+          Top Wells — Production Recovery (bbl/d)
+        </CardTitle>
+        <p className="text-xs text-slate-400 mt-0.5">Ranked by production uplift after intervention</p>
       </CardHeader>
-      <CardContent className="pt-4 pb-4 px-4">
-        <ResponsiveContainer width="100%" height={180}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={50}
-              outerRadius={75}
-              paddingAngle={3}
-              dataKey="value"
-              label={({ name, value }) => `${name}: ${value}`}
-              labelLine={false}
-            >
-              {data.map((entry, i) => (
-                <Cell key={i} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }} />
-          </PieChart>
-        </ResponsiveContainer>
+      <CardContent className="p-0">
+        <div className="divide-y divide-slate-50">
+          {ranked.map((row, idx) => {
+            const isPositive = row.upliftAfter >= 0;
+            const barWidth = Math.min(100, Math.abs(row.upliftAfter) / Math.max(...ranked.map(r => Math.abs(r.upliftAfter))) * 100);
+            return (
+              <motion.div
+                key={`${row.platform}-${row.wellNumber}-${idx}`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-blue-50/40 transition-colors"
+              >
+                {/* Rank badge */}
+                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                  style={{
+                    background: idx < 3 ? medalColors[idx] : '#f1f5f9',
+                    color: idx < 3 ? 'white' : '#64748b',
+                  }}
+                >
+                  {idx + 1}
+                </div>
+
+                {/* Well info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-sm text-slate-800 font-mono">{row.wellNumber}</span>
+                    <span className="text-xs text-slate-400">{row.platform}</span>
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                      style={{
+                        background: SL_COLORS[row.serviceLine] + '18',
+                        color: SL_COLORS[row.serviceLine],
+                      }}
+                    >
+                      {SERVICE_LINE_LABELS[row.serviceLine].split(' ')[0]}
+                    </span>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${barWidth}%`,
+                        background: isPositive ? '#073674' : '#ef4444',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Values */}
+                <div className="text-right flex-shrink-0">
+                  <p className={`text-sm font-bold font-mono ${isPositive ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {isPositive ? '+' : ''}{row.upliftAfter.toLocaleString()}
+                  </p>
+                  {row.uplift30 != null && (
+                    <p className="text-xs text-slate-400 font-mono">
+                      +30d: {row.uplift30 >= 0 ? '+' : ''}{row.uplift30.toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
@@ -282,7 +360,7 @@ export default function OverviewTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthlyImpactChart />
         <div className="space-y-4">
-          <JobsByServiceLine />
+          <ProductionRecoveryLeaderboard />
           <ProductionRecoveryByServiceLine />
         </div>
       </div>

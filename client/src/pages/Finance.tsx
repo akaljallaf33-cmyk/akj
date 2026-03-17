@@ -59,9 +59,12 @@ function calcJobTotalCost(job: {
 
 const YEAR_END_2026 = new Date('2026-12-31');
 
-function daysUntilYearEnd(jobDate: string): number {
-  // Production is stable at +30 days after the job, so count from Job Date + 30 days to 31 Dec 2026
-  const stableDate = new Date(jobDate);
+/**
+ * Count days from End Date + 30 days to 31 Dec 2026.
+ * The +30 days represents the time to reach stable production after job completion.
+ */
+function daysUntilYearEnd(endDate: string): number {
+  const stableDate = new Date(endDate);
   stableDate.setDate(stableDate.getDate() + 30);
   const diffMs = YEAR_END_2026.getTime() - stableDate.getTime();
   const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
@@ -73,12 +76,12 @@ function calcROI(
   productionBefore: number | null | undefined,
   oilPrice: number | null | undefined,
   totalCost: number | null,
-  jobDate?: string
+  endDate?: string
 ): number | null {
   if (production30Days == null || productionBefore == null || oilPrice == null || !totalCost) return null;
   const recovery = production30Days - productionBefore;
   if (recovery <= 0) return null;
-  const days = jobDate ? daysUntilYearEnd(jobDate) : 0;
+  const days = endDate ? daysUntilYearEnd(endDate) : 0;
   const periodValue = recovery * oilPrice * days;
   return (periodValue / totalCost) * 100;
 }
@@ -93,7 +96,8 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
 
   const chartData = useMemo(() => {
     return MONTHS_2026.map((m, idx) => {
-      const monthJobs = jobs.filter(j => j.jobDate.startsWith(m.value));
+      // Group by endDate month
+      const monthJobs = jobs.filter(j => j.endDate.startsWith(m.value));
       const oilPrice = oilPriceMap[m.value] ?? null;
 
       let totalROIValue = 0;
@@ -104,7 +108,7 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
         if (!totalCost || !oilPrice || job.production30Days == null || job.productionBefore == null) return;
         const recovery = job.production30Days - job.productionBefore;
         if (recovery <= 0) return;
-        const days = daysUntilYearEnd(job.jobDate);
+        const days = daysUntilYearEnd(job.endDate);
         const periodValue = recovery * oilPrice * days;
         totalROIValue += periodValue;
         hasData = true;
@@ -127,7 +131,9 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
           <TrendingUp className="w-4 h-4" />
           Monthly ROI Value (USD $)
         </CardTitle>
-        <p className="text-xs text-slate-500 mt-1">Total production value recovered per month from all CT interventions (Recovery at +30 Days × Oil Price × Days remaining to 31 Dec 2026, counting from Job Date + 30 days).</p>
+        <p className="text-xs text-slate-500 mt-1">
+          Total production value recovered per month from all CT interventions (Recovery at +30 Days × Oil Price × Days remaining to 31 Dec 2026, counting from End Date + 30 days). Jobs are grouped by their End Date month.
+        </p>
       </CardHeader>
       <CardContent className="p-4">
         {!hasAnyData ? (
@@ -265,19 +271,20 @@ function ROITable() {
     return m;
   }, [oilPrices]);
 
-  // Only show CT jobs
+  // Only show CT jobs, sorted by endDate
   const ctJobs = useMemo(() =>
-    jobs.filter(j => j.serviceLine === 'coiled-tubing').sort((a, b) => a.jobDate.localeCompare(b.jobDate)),
+    jobs.filter(j => j.serviceLine === 'coiled-tubing').sort((a, b) => a.endDate.localeCompare(b.endDate)),
     [jobs]
   );
 
   if (jobsLoading) return <div className="py-12 text-center text-slate-400">Loading...</div>;
 
   const rows = ctJobs.map(job => {
-    const month = job.jobDate.substring(0, 7);
+    // Use endDate month for oil price lookup
+    const month = job.endDate.substring(0, 7);
     const oilPrice = oilPriceMap[month] ?? null;
     const totalCost = calcJobTotalCost(job);
-    const roi = calcROI(job.production30Days, job.productionBefore, oilPrice, totalCost, job.jobDate);
+    const roi = calcROI(job.production30Days, job.productionBefore, oilPrice, totalCost, job.endDate);
     const recovery = (job.production30Days != null && job.productionBefore != null)
       ? job.production30Days - job.productionBefore
       : null;
@@ -300,13 +307,13 @@ function ROITable() {
   const totalRecovery = rows.reduce((s, r) => s + (r.recovery ?? 0), 0);
   const totalROIValue = (() => {
     let total = 0;
-    rows.forEach(job => {
-      const month = job.job.jobDate.substring(0, 7);
+    rows.forEach(row => {
+      const month = row.job.endDate.substring(0, 7);
       const oilPrice = oilPriceMap[month] ?? null;
-      if (!oilPrice || job.job.production30Days == null || job.job.productionBefore == null || !job.totalCost) return;
-      const recovery = job.job.production30Days - job.job.productionBefore;
+      if (!oilPrice || row.job.production30Days == null || row.job.productionBefore == null || !row.totalCost) return;
+      const recovery = row.job.production30Days - row.job.productionBefore;
       if (recovery <= 0) return;
-      const days = daysUntilYearEnd(job.job.jobDate);
+      const days = daysUntilYearEnd(row.job.endDate);
       total += recovery * oilPrice * days;
     });
     return total > 0 ? total : null;
@@ -350,8 +357,8 @@ function ROITable() {
           </CardTitle>
           <p className="text-xs text-slate-500 mt-1">
             ROI = (Production Recovery at +30 Days × Monthly Oil Price × Days from stable date to 31 Dec 2026) ÷ Total Job Cost × 100%
-            where stable date = Job Date + 30 days
-            &nbsp;|&nbsp; Cost data is entered when adding/editing a CT job.
+            where stable date = End Date + 30 days
+            &nbsp;|&nbsp; Jobs are grouped by End Date month. Cost data is entered when adding/editing a CT job.
           </p>
         </CardHeader>
         <CardContent className="p-0">
@@ -370,7 +377,7 @@ function ROITable() {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Platform</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Well</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Unit</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Date</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">End Date</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Rig / Jack-Up Cost</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Job Bill</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Total Cost</TableHead>
@@ -398,7 +405,7 @@ function ROITable() {
                           ) : <span className="text-slate-300 text-xs">—</span>}
                         </TableCell>
                         <TableCell className="text-sm text-slate-500 font-mono whitespace-nowrap">
-                          {new Date(job.jobDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {new Date(job.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </TableCell>
                         <TableCell className="text-right text-sm font-mono text-slate-600">{fmtUSD(displayRigCost)}</TableCell>
                         <TableCell className="text-right text-sm font-mono text-slate-600">{fmtUSD(job.jobBill)}</TableCell>
@@ -448,7 +455,7 @@ export default function Finance() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-[#073674]">Finance & ROI</h2>
-          <p className="text-sm text-slate-500">Track job costs, investment, and return on investment for Coiled Tubing operations. Cost data is entered directly when adding or editing a CT job.</p>
+          <p className="text-sm text-slate-500">Track job costs, investment, and return on investment for Coiled Tubing operations. Jobs are grouped by End Date month. ROI counts from End Date + 30 days to 31 Dec 2026.</p>
         </div>
       </div>
 

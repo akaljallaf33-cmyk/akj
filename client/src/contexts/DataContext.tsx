@@ -14,7 +14,8 @@ function rowToJob(row: {
   wellNumber: string;
   unit?: string | null;
   jobType: string;
-  jobDate: string;
+  startDate: string;
+  endDate: string;
   productionBefore: number | null;
   productionAfter: number | null;
   production30Days: number | null;
@@ -37,7 +38,8 @@ function rowToJob(row: {
     wellNumber: row.wellNumber,
     unit: row.unit ?? undefined,
     jobType: row.jobType,
-    jobDate: row.jobDate,
+    startDate: row.startDate,
+    endDate: row.endDate,
     productionBefore: row.productionBefore ?? null,
     productionAfter: row.productionAfter ?? null,
     production30Days: row.production30Days ?? null,
@@ -109,7 +111,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       wellNumber: job.wellNumber,
       unit: job.unit,
       jobType: job.jobType,
-      jobDate: job.jobDate,
+      startDate: job.startDate,
+      endDate: job.endDate,
       productionBefore: job.productionBefore,
       productionAfter: job.productionAfter,
       production30Days: job.production30Days,
@@ -137,7 +140,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       ...(updates.wellNumber !== undefined && { wellNumber: updates.wellNumber }),
       ...(updates.unit !== undefined && { unit: updates.unit }),
       ...(updates.jobType !== undefined && { jobType: updates.jobType }),
-      ...(updates.jobDate !== undefined && { jobDate: updates.jobDate }),
+      ...(updates.startDate !== undefined && { startDate: updates.startDate }),
+      ...(updates.endDate !== undefined && { endDate: updates.endDate }),
       ...(updates.productionBefore !== undefined && { productionBefore: updates.productionBefore }),
       ...(updates.productionAfter !== undefined && { productionAfter: updates.productionAfter }),
       ...(updates.production30Days !== undefined && { production30Days: updates.production30Days }),

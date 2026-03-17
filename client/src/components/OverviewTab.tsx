@@ -26,7 +26,7 @@ function MonthlyImpactChart() {
   const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const data = useMemo(() => {
     return MONTHS_2026.map((m, idx) => {
-      const monthJobs = jobs.filter(j => j.jobDate.startsWith(m.value));
+      const monthJobs = jobs.filter(j => j.endDate.startsWith(m.value));
       const uplift = monthJobs.reduce((sum, j) => {
         if (j.productionBefore !== null && j.productionAfter !== null) {
           return sum + (j.productionAfter - j.productionBefore);
@@ -193,7 +193,7 @@ export default function OverviewTab() {
   // This month
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const thisMonthJobs = jobs.filter(j => j.jobDate.startsWith(thisMonth));
+  const thisMonthJobs = jobs.filter(j => j.endDate.startsWith(thisMonth));
   const thisMonthRecovery = thisMonthJobs.reduce((sum, j) => {
     if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
     return sum;

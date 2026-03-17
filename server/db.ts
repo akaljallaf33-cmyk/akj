@@ -96,7 +96,7 @@ export async function getUserByOpenId(openId: string) {
 export async function getAllWellJobs() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(wellJobs).orderBy(wellJobs.jobDate);
+  return db.select().from(wellJobs).orderBy(wellJobs.endDate);
 }
 
 export async function createWellJob(data: InsertWellJob) {

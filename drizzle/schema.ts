@@ -34,7 +34,8 @@ export const wellJobs = mysqlTable('well_jobs', {
   wellNumber: varchar('wellNumber', { length: 64 }).notNull(),
   unit: varchar('unit', { length: 32 }),
   jobType: varchar('jobType', { length: 128 }).notNull(),
-  jobDate: varchar('jobDate', { length: 10 }).notNull(),
+  startDate: varchar('startDate', { length: 10 }).notNull(), // YYYY-MM-DD — job start date
+  endDate: varchar('endDate', { length: 10 }).notNull(),   // YYYY-MM-DD — job end date (used for month grouping)
   productionBefore: int('productionBefore'),
   productionAfter: int('productionAfter'),
   production30Days: int('production30Days'),

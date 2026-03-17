@@ -94,7 +94,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
   // Monthly uplift data for this service line — always Jan to Dec in order
   const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const monthlyData = MONTHS_2026.map((m, idx) => {
-    const mJobs = jobs.filter(j => j.jobDate.startsWith(m.value));
+    const mJobs = jobs.filter(j => j.endDate.startsWith(m.value));
     const uplift = mJobs.reduce((sum, j) => {
       if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
       return sum;
@@ -292,7 +292,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                       <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Unit</TableHead>
                     )}
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Job Type</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Date</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Start / End Date</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Before (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">After (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">+30 Days (bbl/d)</TableHead>
@@ -328,7 +328,10 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                         )}
                         <TableCell className="text-sm text-slate-600">{job.jobType}</TableCell>
                         <TableCell className="text-sm text-slate-500 font-mono whitespace-nowrap">
-                          {new Date(job.jobDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          <span className="block">{new Date(job.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                          {job.startDate !== job.endDate && (
+                            <span className="block text-xs text-slate-400">→ {new Date(job.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right"><NumCell val={job.productionBefore} /></TableCell>
                         <TableCell className="text-right"><NumCell val={job.productionAfter} /></TableCell>

@@ -19,13 +19,16 @@ interface JobDialogProps {
   editJob?: WellJob | null;
 }
 
+const today = new Date().toISOString().split('T')[0];
+
 const defaultForm = (sl: ServiceLine): Omit<WellJob, 'id'> => ({
   serviceLine: sl,
   platform: '',
   wellNumber: '',
   unit: '',
   jobType: '',
-  jobDate: new Date().toISOString().split('T')[0],
+  startDate: today,
+  endDate: today,
   productionBefore: null,
   productionAfter: null,
   production30Days: null,
@@ -90,7 +93,9 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
     if (!form.platform.trim()) { toast.error('Platform is required'); return; }
     if (!form.wellNumber.trim()) { toast.error('Well Number is required'); return; }
     if (!form.jobType) { toast.error('Job Type is required'); return; }
-    if (!form.jobDate) { toast.error('Job Date is required'); return; }
+    if (!form.startDate) { toast.error('Start Date is required'); return; }
+    if (!form.endDate) { toast.error('End Date is required'); return; }
+    if (form.endDate < form.startDate) { toast.error('End Date cannot be before Start Date'); return; }
 
     if (editJob) {
       updateJob(editJob.id, form);
@@ -169,16 +174,30 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
             </Select>
           </div>
 
-          {/* Job Date */}
+          {/* Start Date */}
           <div className="space-y-1.5">
-            <Label htmlFor="jobDate" className="text-sm font-semibold text-slate-700">Job Date *</Label>
+            <Label htmlFor="startDate" className="text-sm font-semibold text-slate-700">Start Date *</Label>
             <Input
-              id="jobDate"
+              id="startDate"
               type="date"
-              value={form.jobDate}
-              onChange={e => set('jobDate', e.target.value)}
+              value={form.startDate}
+              onChange={e => set('startDate', e.target.value)}
               className="border-slate-300 focus:border-[#073674]"
             />
+          </div>
+
+          {/* End Date */}
+          <div className="space-y-1.5">
+            <Label htmlFor="endDate" className="text-sm font-semibold text-slate-700">End Date *</Label>
+            <Input
+              id="endDate"
+              type="date"
+              value={form.endDate}
+              min={form.startDate}
+              onChange={e => set('endDate', e.target.value)}
+              className="border-slate-300 focus:border-[#073674]"
+            />
+            <p className="text-xs text-slate-400">Job is counted under the month of the End Date</p>
           </div>
 
           {/* Production Before */}

@@ -48,7 +48,8 @@ export interface WellJob {
   wellNumber: string;
   unit?: string; // e.g. CT-1, CT-2 (only for coiled-tubing)
   jobType: string;
-  jobDate: string; // ISO date string YYYY-MM-DD
+  startDate: string; // ISO date string YYYY-MM-DD — job start date
+  endDate: string;   // ISO date string YYYY-MM-DD — job end date (used for month grouping and ROI)
   productionBefore: number | null; // bbl/d
   productionAfter: number | null;  // bbl/d
   production30Days: number | null; // bbl/d at +30 days

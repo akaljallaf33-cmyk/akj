@@ -1,132 +1,132 @@
 // Well Intervention Dashboard — Data Context
-// Persists all well job data in localStorage for offline-first use
+// Uses tRPC + database for persistent, cross-device storage
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useCallback } from 'react';
 import { WellJob, ServiceLine } from '@/lib/types';
-import { nanoid } from 'nanoid';
+import { trpc } from '@/lib/trpc';
+import { toast } from 'sonner';
+
+// Map DB row (numeric id) to WellJob (string id) for compatibility with existing UI
+function rowToJob(row: {
+  id: number;
+  serviceLine: 'coiled-tubing' | 'wireline' | 'pumping';
+  platform: string;
+  wellNumber: string;
+  jobType: string;
+  jobDate: string;
+  productionBefore: number | null;
+  productionAfter: number | null;
+  production30Days: number | null;
+  status: 'Successful' | 'Partially Successful' | 'Failed';
+  notes?: string | null;
+}): WellJob {
+  return {
+    id: String(row.id),
+    serviceLine: row.serviceLine,
+    platform: row.platform,
+    wellNumber: row.wellNumber,
+    jobType: row.jobType,
+    jobDate: row.jobDate,
+    productionBefore: row.productionBefore ?? null,
+    productionAfter: row.productionAfter ?? null,
+    production30Days: row.production30Days ?? null,
+    status: row.status,
+    notes: row.notes ?? undefined,
+  };
+}
 
 interface DataContextType {
   jobs: WellJob[];
-  addJob: (job: Omit<WellJob, 'id'>) => void;
-  updateJob: (id: string, job: Partial<WellJob>) => void;
-  deleteJob: (id: string) => void;
+  isLoading: boolean;
+  addJob: (job: Omit<WellJob, 'id'>) => Promise<void>;
+  updateJob: (id: string, job: Partial<WellJob>) => Promise<void>;
+  deleteJob: (id: string) => Promise<void>;
   getJobsByServiceLine: (sl: ServiceLine) => WellJob[];
 }
 
 const DataContext = createContext<DataContextType | null>(null);
 
-const STORAGE_KEY = 'wi_dashboard_jobs_2026';
-
-// Sample demo data so the dashboard is not empty on first load
-const DEMO_JOBS: WellJob[] = [
-  {
-    id: 'demo-1',
-    serviceLine: 'coiled-tubing',
-    platform: 'Platform A',
-    wellNumber: 'A-01',
-    jobType: 'Cleanout / Milling',
-    jobDate: '2026-01-15',
-    productionBefore: 320,
-    productionAfter: 580,
-    production30Days: 540,
-    status: 'Successful',
-  },
-  {
-    id: 'demo-2',
-    serviceLine: 'coiled-tubing',
-    platform: 'Platform B',
-    wellNumber: 'B-03',
-    jobType: 'Sand Cleanout',
-    jobDate: '2026-02-08',
-    productionBefore: 210,
-    productionAfter: 410,
-    production30Days: 390,
-    status: 'Successful',
-  },
-  {
-    id: 'demo-3',
-    serviceLine: 'wireline',
-    platform: 'Platform A',
-    wellNumber: 'A-05',
-    jobType: 'Perforation',
-    jobDate: '2026-01-22',
-    productionBefore: 150,
-    productionAfter: 480,
-    production30Days: 460,
-    status: 'Successful',
-  },
-  {
-    id: 'demo-4',
-    serviceLine: 'wireline',
-    platform: 'Platform C',
-    wellNumber: 'C-02',
-    jobType: 'Production Logging',
-    jobDate: '2026-02-14',
-    productionBefore: 300,
-    productionAfter: 290,
-    production30Days: 285,
-    status: 'Partially Successful',
-  },
-  {
-    id: 'demo-5',
-    serviceLine: 'pumping',
-    platform: 'Platform B',
-    wellNumber: 'B-07',
-    jobType: 'Acid Stimulation',
-    jobDate: '2026-01-30',
-    productionBefore: 180,
-    productionAfter: 520,
-    production30Days: 490,
-    status: 'Successful',
-  },
-  {
-    id: 'demo-6',
-    serviceLine: 'pumping',
-    platform: 'Platform A',
-    wellNumber: 'A-09',
-    jobType: 'Matrix Acidizing',
-    jobDate: '2026-03-05',
-    productionBefore: 95,
-    productionAfter: 60,
-    production30Days: 55,
-    status: 'Failed',
-  },
-];
-
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const [jobs, setJobs] = useState<WellJob[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return DEMO_JOBS;
+  const utils = trpc.useUtils();
+
+  const { data: rows = [], isLoading } = trpc.wellJobs.list.useQuery(undefined, {
+    staleTime: 30_000,
   });
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
-  }, [jobs]);
+  const jobs: WellJob[] = rows.map(rowToJob);
 
-  const addJob = useCallback((job: Omit<WellJob, 'id'>) => {
-    setJobs(prev => [...prev, { ...job, id: nanoid() }]);
-  }, []);
+  const createMutation = trpc.wellJobs.create.useMutation({
+    onSuccess: () => {
+      utils.wellJobs.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error('Failed to save job: ' + err.message);
+    },
+  });
 
-  const updateJob = useCallback((id: string, updates: Partial<WellJob>) => {
-    setJobs(prev => prev.map(j => j.id === id ? { ...j, ...updates } : j));
-  }, []);
+  const updateMutation = trpc.wellJobs.update.useMutation({
+    onSuccess: () => {
+      utils.wellJobs.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error('Failed to update job: ' + err.message);
+    },
+  });
 
-  const deleteJob = useCallback((id: string) => {
-    setJobs(prev => prev.filter(j => j.id !== id));
-  }, []);
+  const deleteMutation = trpc.wellJobs.delete.useMutation({
+    onSuccess: () => {
+      utils.wellJobs.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error('Failed to delete job: ' + err.message);
+    },
+  });
+
+  const addJob = useCallback(async (job: Omit<WellJob, 'id'>) => {
+    await createMutation.mutateAsync({
+      serviceLine: job.serviceLine,
+      platform: job.platform,
+      wellNumber: job.wellNumber,
+      jobType: job.jobType,
+      jobDate: job.jobDate,
+      productionBefore: job.productionBefore,
+      productionAfter: job.productionAfter,
+      production30Days: job.production30Days,
+      status: job.status,
+      notes: job.notes,
+    });
+  }, [createMutation]);
+
+  const updateJob = useCallback(async (id: string, updates: Partial<WellJob>) => {
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) return;
+    await updateMutation.mutateAsync({
+      id: numId,
+      ...(updates.serviceLine !== undefined && { serviceLine: updates.serviceLine }),
+      ...(updates.platform !== undefined && { platform: updates.platform }),
+      ...(updates.wellNumber !== undefined && { wellNumber: updates.wellNumber }),
+      ...(updates.jobType !== undefined && { jobType: updates.jobType }),
+      ...(updates.jobDate !== undefined && { jobDate: updates.jobDate }),
+      ...(updates.productionBefore !== undefined && { productionBefore: updates.productionBefore }),
+      ...(updates.productionAfter !== undefined && { productionAfter: updates.productionAfter }),
+      ...(updates.production30Days !== undefined && { production30Days: updates.production30Days }),
+      ...(updates.status !== undefined && { status: updates.status }),
+      ...(updates.notes !== undefined && { notes: updates.notes }),
+    });
+  }, [updateMutation]);
+
+  const deleteJob = useCallback(async (id: string) => {
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) return;
+    await deleteMutation.mutateAsync({ id: numId });
+  }, [deleteMutation]);
 
   const getJobsByServiceLine = useCallback((sl: ServiceLine) => {
     return jobs.filter(j => j.serviceLine === sl);
   }, [jobs]);
 
   return (
-    <DataContext.Provider value={{ jobs, addJob, updateJob, deleteJob, getJobsByServiceLine }}>
+    <DataContext.Provider value={{ jobs, isLoading, addJob, updateJob, deleteJob, getJobsByServiceLine }}>
       {children}
     </DataContext.Provider>
   );

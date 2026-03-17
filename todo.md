@@ -32,3 +32,6 @@
 - [ ] Add platform filter dropdown for large datasets
 - [ ] Publish the dashboard to get shareable link
 - [x] Replace "Jobs by Service Line" chart in Overview with Production Recovery Leaderboard (top wells by uplift)
+- [x] Add Payback Period column to Finance ROI table (days to recover job cost from incremental production)
+- [x] Add global monthly decline rate setting to Finance page
+- [x] Add Decline-Adjusted ROI column alongside flat ROI for comparison

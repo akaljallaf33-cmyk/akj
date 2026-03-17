@@ -5,10 +5,11 @@ import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, AlertCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { DollarSign, TrendingUp, AlertCircle, Clock, ChevronDown, ChevronUp, Info, Timer } from 'lucide-react';
 import { MONTHS_2026 } from '@/lib/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -59,19 +60,28 @@ function calcJobTotalCost(job: {
 
 const YEAR_END_2026 = new Date('2026-12-31');
 
-/**
- * Count days from End Date + 30 days to 31 Dec 2026.
- * The +30 days represents the time to reach stable production after job completion.
- */
+/** Days from End Date + 30 days to 31 Dec 2026 */
 function daysUntilYearEnd(endDate: string): number {
   const stableDate = new Date(endDate);
   stableDate.setDate(stableDate.getDate() + 30);
   const diffMs = YEAR_END_2026.getTime() - stableDate.getTime();
   const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-  return Math.min(days, 335); // cap at 335 (365 - 30)
+  return Math.min(days, 335);
 }
 
-function calcROI(
+/** Months from stable date (endDate + 30 days) to 31 Dec 2026 */
+function monthsUntilYearEnd(endDate: string): number {
+  const stableDate = new Date(endDate);
+  stableDate.setDate(stableDate.getDate() + 30);
+  const diffMs = YEAR_END_2026.getTime() - stableDate.getTime();
+  return Math.max(0, diffMs / (1000 * 60 * 60 * 24 * 30.44));
+}
+
+/**
+ * Flat ROI: recovery stays constant.
+ * ROI % = (recovery × oilPrice × days) / cost × 100
+ */
+function calcFlatROI(
   production30Days: number | null | undefined,
   productionBefore: number | null | undefined,
   oilPrice: number | null | undefined,
@@ -86,6 +96,126 @@ function calcROI(
   return (periodValue / totalCost) * 100;
 }
 
+/**
+ * Decline-adjusted ROI: recovery declines at `monthlyDeclineRate` per month.
+ * Total value = Σ (recovery × (1 - r)^m × oilPrice × daysInMonth) for each month m
+ * where r = monthly decline rate (0.02 = 2%/month)
+ */
+function calcDeclineROI(
+  production30Days: number | null | undefined,
+  productionBefore: number | null | undefined,
+  oilPrice: number | null | undefined,
+  totalCost: number | null,
+  endDate: string | undefined,
+  monthlyDeclineRate: number
+): number | null {
+  if (production30Days == null || productionBefore == null || oilPrice == null || !totalCost || !endDate) return null;
+  const recovery = production30Days - productionBefore;
+  if (recovery <= 0) return null;
+
+  const stableDate = new Date(endDate);
+  stableDate.setDate(stableDate.getDate() + 30);
+
+  let totalValue = 0;
+  let current = new Date(stableDate);
+
+  while (current <= YEAR_END_2026) {
+    // Days remaining in this month (or until year end)
+    const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0); // last day of month
+    const periodEnd = monthEnd < YEAR_END_2026 ? monthEnd : YEAR_END_2026;
+    const daysInPeriod = Math.max(0, (periodEnd.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Month index from stable date
+    const monthsElapsed =
+      (current.getFullYear() - stableDate.getFullYear()) * 12 +
+      (current.getMonth() - stableDate.getMonth());
+
+    const declinedRecovery = recovery * Math.pow(1 - monthlyDeclineRate, monthsElapsed);
+    totalValue += declinedRecovery * oilPrice * daysInPeriod;
+
+    // Move to first day of next month
+    current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+  }
+
+  return (totalValue / totalCost) * 100;
+}
+
+/**
+ * Payback period in days: how many days of incremental production at oil price to recover cost.
+ * Payback = cost / (recovery_bbl_d × oil_price)
+ */
+function calcPaybackDays(
+  production30Days: number | null | undefined,
+  productionBefore: number | null | undefined,
+  oilPrice: number | null | undefined,
+  totalCost: number | null
+): number | null {
+  if (production30Days == null || productionBefore == null || oilPrice == null || !totalCost) return null;
+  const recovery = production30Days - productionBefore;
+  if (recovery <= 0) return null;
+  const dailyRevenue = recovery * oilPrice;
+  if (dailyRevenue <= 0) return null;
+  return Math.ceil(totalCost / dailyRevenue);
+}
+
+// ─── Decline Rate Setting ─────────────────────────────────────────────────────
+
+function DeclineRateSetting({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [input, setInput] = useState(String((value * 100).toFixed(1)));
+
+  const save = () => {
+    const parsed = parseFloat(input);
+    if (isNaN(parsed) || parsed < 0 || parsed > 50) {
+      toast.error('Enter a valid decline rate between 0 and 50%');
+      return;
+    }
+    onChange(parsed / 100);
+    setEditing(false);
+    toast.success('Decline rate updated');
+  };
+
+  return (
+    <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3">
+      <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <TrendingUp className="w-4 h-4 text-amber-600" />
+      </div>
+      <div className="flex-1">
+        <p className="text-xs font-bold text-amber-800 uppercase tracking-wider">Monthly Production Decline Rate</p>
+        <p className="text-xs text-amber-600 mt-0.5">Applied to decline-adjusted ROI calculation (brownfield field-wide rate)</p>
+      </div>
+      {editing ? (
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Input
+              type="number"
+              min="0"
+              max="50"
+              step="0.1"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              className="w-24 h-8 text-center text-sm border-amber-400 focus:border-amber-600 pr-6"
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">%/mo</span>
+          </div>
+          <Button size="sm" className="h-8 bg-amber-600 hover:bg-amber-700 text-white text-xs px-3" onClick={save}>Save</Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs px-3" onClick={() => setEditing(false)}>Cancel</Button>
+        </div>
+      ) : (
+        <button
+          onClick={() => { setInput(String((value * 100).toFixed(1))); setEditing(true); }}
+          className="flex items-center gap-2 bg-white border border-amber-300 rounded-lg px-4 py-1.5 hover:bg-amber-50 transition-colors cursor-pointer"
+        >
+          <span className="text-xl font-bold text-amber-700 font-mono">{(value * 100).toFixed(1)}%</span>
+          <span className="text-xs text-amber-500">/ month</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Monthly ROI Chart ────────────────────────────────────────────────────────
 
 function MonthlyROIChart({ jobs, oilPriceMap }: {
@@ -96,7 +226,6 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
 
   const chartData = useMemo(() => {
     return MONTHS_2026.map((m, idx) => {
-      // Group by endDate month
       const monthJobs = jobs.filter(j => j.endDate.startsWith(m.value));
       const oilPrice = oilPriceMap[m.value] ?? null;
 
@@ -109,8 +238,7 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
         const recovery = job.production30Days - job.productionBefore;
         if (recovery <= 0) return;
         const days = daysUntilYearEnd(job.endDate);
-        const periodValue = recovery * oilPrice * days;
-        totalROIValue += periodValue;
+        totalROIValue += recovery * oilPrice * days;
         hasData = true;
       });
 
@@ -129,10 +257,10 @@ function MonthlyROIChart({ jobs, oilPriceMap }: {
       <CardHeader className="pb-3 pt-5 px-6 border-b border-slate-100">
         <CardTitle className="text-base font-bold text-[#073674] flex items-center gap-2">
           <TrendingUp className="w-4 h-4" />
-          Monthly ROI Value (USD $)
+          Monthly ROI Value (USD $) — Flat Rate
         </CardTitle>
         <p className="text-xs text-slate-500 mt-1">
-          Total production value recovered per month from all CT interventions (Recovery at +30 Days × Oil Price × Days remaining to 31 Dec 2026, counting from End Date + 30 days). Jobs are grouped by their End Date month.
+          Total production value recovered per month (Recovery at +30 Days × Oil Price × Days remaining to 31 Dec 2026, from End Date + 30 days). Jobs grouped by End Date month.
         </p>
       </CardHeader>
       <CardContent className="p-4">
@@ -261,7 +389,7 @@ function OilPricePanel() {
 
 // ─── ROI Table ────────────────────────────────────────────────────────────────
 
-function ROITable() {
+function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
   const { data: jobs = [], isLoading: jobsLoading } = trpc.wellJobs.list.useQuery();
   const { data: oilPrices = [] } = trpc.finance.listOilPrices.useQuery();
 
@@ -271,7 +399,6 @@ function ROITable() {
     return m;
   }, [oilPrices]);
 
-  // Only show CT jobs, sorted by endDate
   const ctJobs = useMemo(() =>
     jobs.filter(j => j.serviceLine === 'coiled-tubing').sort((a, b) => a.endDate.localeCompare(b.endDate)),
     [jobs]
@@ -280,16 +407,16 @@ function ROITable() {
   if (jobsLoading) return <div className="py-12 text-center text-slate-400">Loading...</div>;
 
   const rows = ctJobs.map(job => {
-    // Use endDate month for oil price lookup
     const month = job.endDate.substring(0, 7);
     const oilPrice = oilPriceMap[month] ?? null;
     const totalCost = calcJobTotalCost(job);
-    const roi = calcROI(job.production30Days, job.productionBefore, oilPrice, totalCost, job.endDate);
+    const flatROI = calcFlatROI(job.production30Days, job.productionBefore, oilPrice, totalCost, job.endDate);
+    const declineROI = calcDeclineROI(job.production30Days, job.productionBefore, oilPrice, totalCost, job.endDate, monthlyDeclineRate);
+    const paybackDays = calcPaybackDays(job.production30Days, job.productionBefore, oilPrice, totalCost);
     const recovery = (job.production30Days != null && job.productionBefore != null)
       ? job.production30Days - job.productionBefore
       : null;
 
-    // Jack-up cost breakdown for display
     let jackUpCost: number | null = null;
     if (job.unit === 'CT-1' && job.ct1DailyRate) {
       jackUpCost = (job.operationalDays ?? 0) * job.ct1DailyRate + (job.badWeatherDays ?? 0) * job.ct1DailyRate * 0.5;
@@ -300,12 +427,13 @@ function ROITable() {
       rigCost = (job.rigOperationalDays ?? 0) * job.rigDailyRate + (job.rigBadWeatherDays ?? 0) * job.rigDailyRate * 0.5;
     }
 
-    return { job, oilPrice, totalCost, roi, recovery, jackUpCost, rigCost };
+    return { job, oilPrice, totalCost, flatROI, declineROI, paybackDays, recovery, jackUpCost, rigCost };
   });
 
   const totalCostSum = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0);
   const totalRecovery = rows.reduce((s, r) => s + (r.recovery ?? 0), 0);
-  const totalROIValue = (() => {
+
+  const totalFlatROIValue = (() => {
     let total = 0;
     rows.forEach(row => {
       const month = row.job.endDate.substring(0, 7);
@@ -313,19 +441,50 @@ function ROITable() {
       if (!oilPrice || row.job.production30Days == null || row.job.productionBefore == null || !row.totalCost) return;
       const recovery = row.job.production30Days - row.job.productionBefore;
       if (recovery <= 0) return;
-      const days = daysUntilYearEnd(row.job.endDate);
-      total += recovery * oilPrice * days;
+      total += recovery * oilPrice * daysUntilYearEnd(row.job.endDate);
     });
     return total > 0 ? total : null;
   })();
 
+  const totalDeclineROIValue = (() => {
+    let total = 0;
+    rows.forEach(row => {
+      const month = row.job.endDate.substring(0, 7);
+      const oilPrice = oilPriceMap[month] ?? null;
+      if (!oilPrice || row.job.production30Days == null || row.job.productionBefore == null || !row.totalCost) return;
+      const recovery = row.job.production30Days - row.job.productionBefore;
+      if (recovery <= 0) return;
+      // Recalculate decline value
+      const stableDate = new Date(row.job.endDate);
+      stableDate.setDate(stableDate.getDate() + 30);
+      let val = 0;
+      let current = new Date(stableDate);
+      while (current <= YEAR_END_2026) {
+        const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+        const periodEnd = monthEnd < YEAR_END_2026 ? monthEnd : YEAR_END_2026;
+        const daysInPeriod = Math.max(0, (periodEnd.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+        const monthsElapsed = (current.getFullYear() - stableDate.getFullYear()) * 12 + (current.getMonth() - stableDate.getMonth());
+        val += recovery * Math.pow(1 - monthlyDeclineRate, monthsElapsed) * oilPrice * daysInPeriod;
+        current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+      }
+      total += val;
+    });
+    return total > 0 ? total : null;
+  })();
+
+  const roiColor = (roi: number | null) => {
+    if (roi == null) return 'text-slate-400';
+    if (roi >= 200) return 'text-emerald-600 font-bold';
+    if (roi >= 100) return 'text-emerald-500';
+    return 'text-amber-500';
+  };
+
   return (
     <>
-      {/* Monthly ROI Chart */}
       <MonthlyROIChart jobs={ctJobs} oilPriceMap={oilPriceMap} />
 
       {/* KPI Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="border-0 shadow-sm bg-white">
           <CardContent className="p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total CT Investment</p>
@@ -340,9 +499,19 @@ function ROITable() {
         </Card>
         <Card className="border-0 shadow-sm bg-white">
           <CardContent className="p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total ROI Value (to 31 Dec 2026)</p>
-            <p className={`text-2xl font-bold ${totalROIValue != null ? 'text-emerald-600' : 'text-slate-400'}`}>
-              {totalROIValue != null ? fmtUSD(totalROIValue) : '—'}
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Flat ROI Value (to 31 Dec)</p>
+            <p className={`text-2xl font-bold ${totalFlatROIValue != null ? 'text-emerald-600' : 'text-slate-400'}`}>
+              {totalFlatROIValue != null ? fmtUSD(totalFlatROIValue) : '—'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm bg-white border-l-4 border-l-amber-400">
+          <CardContent className="p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+              Decline-Adj. ROI Value ({(monthlyDeclineRate * 100).toFixed(1)}%/mo)
+            </p>
+            <p className={`text-2xl font-bold ${totalDeclineROIValue != null ? 'text-amber-600' : 'text-slate-400'}`}>
+              {totalDeclineROIValue != null ? fmtUSD(totalDeclineROIValue) : '—'}
             </p>
           </CardContent>
         </Card>
@@ -353,13 +522,22 @@ function ROITable() {
         <CardHeader className="pb-3 pt-5 px-6 border-b border-slate-100">
           <CardTitle className="text-base font-bold text-[#073674] flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
-            Coiled Tubing — ROI per Well
+            Coiled Tubing — ROI & Payback per Well
           </CardTitle>
-          <p className="text-xs text-slate-500 mt-1">
-            ROI = (Production Recovery at +30 Days × Monthly Oil Price × Days from stable date to 31 Dec 2026) ÷ Total Job Cost × 100%
-            where stable date = End Date + 30 days
-            &nbsp;|&nbsp; Jobs are grouped by End Date month. Cost data is entered when adding/editing a CT job.
-          </p>
+          <div className="mt-2 space-y-1">
+            <p className="text-xs text-slate-500 flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded-sm bg-[#073674]" />
+              <strong>Flat ROI</strong>: Recovery at +30 Days stays constant until 31 Dec 2026
+            </p>
+            <p className="text-xs text-slate-500 flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded-sm bg-amber-400" />
+              <strong>Decline-Adj. ROI</strong>: Recovery declines at {(monthlyDeclineRate * 100).toFixed(1)}%/month (brownfield decline)
+            </p>
+            <p className="text-xs text-slate-500 flex items-center gap-1">
+              <Timer className="w-3 h-3" />
+              <strong>Payback</strong>: Days needed to recover total job cost from incremental production
+            </p>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {ctJobs.length === 0 ? (
@@ -378,22 +556,30 @@ function ROITable() {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Well</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Unit</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">End Date</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Rig / Jack-Up Cost</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Rig/Jack-Up</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Job Bill</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Total Cost</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Recovery +30d</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Oil Price</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">ROI (to 31 Dec 2026)</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">
+                      <span className="flex items-center justify-end gap-1">
+                        <Timer className="w-3 h-3" /> Payback
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-[#073674] text-right bg-blue-50">Flat ROI</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-amber-700 text-right bg-amber-50">
+                      Decline ROI ({(monthlyDeclineRate * 100).toFixed(1)}%/mo)
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map(({ job, oilPrice, totalCost, roi, recovery, jackUpCost, rigCost }, idx) => {
+                  {rows.map(({ job, oilPrice, totalCost, flatROI, declineROI, paybackDays, recovery, jackUpCost, rigCost }, idx) => {
                     const displayRigCost = jackUpCost ?? rigCost;
-                    const roiColor = roi == null ? 'text-slate-400' : roi >= 200 ? 'text-emerald-600 font-bold' : roi >= 100 ? 'text-emerald-500' : 'text-amber-500';
                     const hasCost = totalCost != null;
+                    const missingReason = !hasCost ? 'No cost data' : !oilPrice ? 'No oil price' : 'No +30d data';
 
                     return (
-                      <TableRow key={job.id} className="border-b border-slate-50 hover:bg-blue-50/40">
+                      <TableRow key={job.id} className="border-b border-slate-50 hover:bg-blue-50/30">
                         <TableCell className="text-slate-400 text-xs font-mono">{idx + 1}</TableCell>
                         <TableCell className="font-semibold text-slate-700 text-sm">{job.platform}</TableCell>
                         <TableCell className="font-mono text-sm text-[#073674] font-semibold">{job.wellNumber}</TableCell>
@@ -418,17 +604,40 @@ function ROITable() {
                           ) : <span className="text-slate-300">—</span>}
                         </TableCell>
                         <TableCell className="text-right text-sm font-mono text-slate-600">
-                          {oilPrice ? `$${oilPrice}` : <span className="text-amber-400 text-xs">No price set</span>}
+                          {oilPrice ? `$${oilPrice}` : <span className="text-amber-400 text-xs">No price</span>}
                         </TableCell>
+                        {/* Payback Period */}
                         <TableCell className="text-right text-sm font-mono">
-                          <span className={roiColor}>
-                            {roi != null ? `${fmt(roi, 1)}%` : (
-                              <span className="flex items-center justify-end gap-1 text-slate-300 text-xs">
-                                <Clock className="w-3 h-3" />
-                                {!hasCost ? 'No cost data' : !oilPrice ? 'No oil price' : 'No +30d data'}
-                              </span>
+                          {paybackDays != null ? (
+                            <span className={`font-semibold ${paybackDays <= 30 ? 'text-emerald-600' : paybackDays <= 90 ? 'text-amber-500' : 'text-orange-500'}`}>
+                              {paybackDays} days
+                            </span>
+                          ) : (
+                            <span className="flex items-center justify-end gap-1 text-slate-300 text-xs">
+                              <Clock className="w-3 h-3" />{missingReason}
+                            </span>
+                          )}
+                        </TableCell>
+                        {/* Flat ROI */}
+                        <TableCell className="text-right text-sm font-mono bg-blue-50/40">
+                          <span className={roiColor(flatROI)}>
+                            {flatROI != null ? `${fmt(flatROI, 1)}%` : (
+                              <span className="text-slate-300 text-xs">{missingReason}</span>
                             )}
                           </span>
+                        </TableCell>
+                        {/* Decline-Adjusted ROI */}
+                        <TableCell className="text-right text-sm font-mono bg-amber-50/40">
+                          <div>
+                            <span className={declineROI != null ? 'text-amber-600 font-semibold' : 'text-slate-300 text-xs'}>
+                              {declineROI != null ? `${fmt(declineROI, 1)}%` : missingReason}
+                            </span>
+                            {flatROI != null && declineROI != null && (
+                              <p className="text-xs text-slate-400 font-normal">
+                                Δ {fmt(declineROI - flatROI, 1)}%
+                              </p>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -446,6 +655,8 @@ function ROITable() {
 // ─── Main Finance Page ────────────────────────────────────────────────────────
 
 export default function Finance() {
+  const [monthlyDeclineRate, setMonthlyDeclineRate] = useState(0.02); // default 2%/month
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -455,14 +666,17 @@ export default function Finance() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-[#073674]">Finance & ROI</h2>
-          <p className="text-sm text-slate-500">Track job costs, investment, and return on investment for Coiled Tubing operations. Jobs are grouped by End Date month. ROI counts from End Date + 30 days to 31 Dec 2026.</p>
+          <p className="text-sm text-slate-500">Track job costs, payback period, and return on investment for Coiled Tubing operations. Jobs grouped by End Date month.</p>
         </div>
       </div>
 
-      {/* Monthly ROI Chart + ROI Table */}
-      <ROITable />
+      {/* Decline Rate Setting */}
+      <DeclineRateSetting value={monthlyDeclineRate} onChange={setMonthlyDeclineRate} />
 
-      {/* Oil Price Panel (collapsible, at bottom) */}
+      {/* ROI Table + Charts */}
+      <ROITable monthlyDeclineRate={monthlyDeclineRate} />
+
+      {/* Oil Price Panel */}
       <OilPricePanel />
     </div>
   );

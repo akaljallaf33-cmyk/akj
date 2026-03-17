@@ -40,7 +40,7 @@ function StatusBadge({ status }: { status: WellJob['status'] }) {
   );
 }
 
-function UpliftCell({ before, after }: { before: number | null; after: number | null }) {
+function ProductionRecoveryCell({ before, after }: { before: number | null; after: number | null }) {
   if (before === null || after === null) return <span className="text-slate-400 text-sm">—</span>;
   const delta = after - before;
   const pct = before > 0 ? ((delta / before) * 100).toFixed(1) : '—';
@@ -79,11 +79,11 @@ export default function ServiceLineTab({ serviceLine }: Props) {
   // KPI summary
   const totalJobs = jobs.length;
   const successful = jobs.filter(j => j.status === 'Successful').length;
-  const totalUpliftAfter = jobs.reduce((sum, j) => {
+  const totalRecoveryAfter = jobs.reduce((sum, j) => {
     if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
     return sum;
   }, 0);
-  const totalUplift30 = jobs.reduce((sum, j) => {
+  const totalRecovery30 = jobs.reduce((sum, j) => {
     if (j.productionBefore !== null && j.production30Days !== null) return sum + (j.production30Days - j.productionBefore);
     return sum;
   }, 0);
@@ -106,20 +106,20 @@ export default function ServiceLineTab({ serviceLine }: Props) {
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Jobs', value: totalJobs, sub: 'in 2026' },
-          { label: 'Successful', value: successful, sub: `${totalJobs > 0 ? ((successful/totalJobs)*100).toFixed(0) : 0}% success rate` },
-          {
-            label: 'Uplift After Job',
-            value: (totalUpliftAfter >= 0 ? '+' : '') + totalUpliftAfter.toLocaleString(),
-            sub: 'bbl/d net gain',
-            positive: totalUpliftAfter >= 0
-          },
-          {
-            label: 'Uplift at +30 Days',
-            value: (totalUplift30 >= 0 ? '+' : '') + totalUplift30.toLocaleString(),
-            sub: 'bbl/d sustained',
-            positive: totalUplift30 >= 0
-          },
+    { label: 'Total Jobs', value: totalJobs, sub: 'in 2026' },
+        { label: 'Successful', value: successful, sub: `${totalJobs > 0 ? ((successful/totalJobs)*100).toFixed(0) : 0}% success rate` },
+        {
+          label: 'Production Recovery After Job',
+          value: (totalRecoveryAfter >= 0 ? '+' : '') + totalRecoveryAfter.toLocaleString(),
+          sub: 'bbl/d net gain',
+          positive: totalRecoveryAfter >= 0
+        },
+        {
+          label: 'Production Recovery at +30 Days',
+          value: (totalRecovery30 >= 0 ? '+' : '') + totalRecovery30.toLocaleString(),
+          sub: 'bbl/d sustained',
+          positive: totalRecovery30 >= 0
+        },
         ].map((kpi, i) => (
           <motion.div
             key={kpi.label}
@@ -147,8 +147,8 @@ export default function ServiceLineTab({ serviceLine }: Props) {
       {jobs.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
           <div className="bg-white rounded-xl shadow-sm border-0 px-6 pt-5 pb-4">
-            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: accentColor }}>Monthly Production Uplift (bbl/d)</p>
-            <p className="text-xs text-slate-400 mb-4">Net gain/loss per month — {label}</p>
+            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: accentColor }}>Monthly Production Recovery (bbl/d)</p>
+            <p className="text-xs text-slate-400 mb-4">Net production recovery per month — {label}</p>
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={monthlyData} barGap={2}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -156,7 +156,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
-                  formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toLocaleString()} bbl/d`, 'Uplift']}
+                  formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toLocaleString()} bbl/d`, 'Production Recovery']}
                 />
                 <Bar dataKey="uplift" radius={[3, 3, 0, 0]}>
                   {monthlyData.map((entry, i) => (
@@ -209,7 +209,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Before (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">After (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">+30 Days (bbl/d)</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Uplift (After)</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Production Recovery</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</TableHead>
                   </TableRow>
@@ -235,7 +235,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                         <TableCell className="text-right"><NumCell val={job.productionBefore} /></TableCell>
                         <TableCell className="text-right"><NumCell val={job.productionAfter} /></TableCell>
                         <TableCell className="text-right"><NumCell val={job.production30Days} /></TableCell>
-                        <TableCell><UpliftCell before={job.productionBefore} after={job.productionAfter} /></TableCell>
+                        <TableCell><ProductionRecoveryCell before={job.productionBefore} after={job.productionAfter} /></TableCell>
                         <TableCell><StatusBadge status={job.status} /></TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">

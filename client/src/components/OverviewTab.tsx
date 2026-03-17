@@ -40,8 +40,8 @@ function MonthlyImpactChart() {
       }, 0);
       return {
         month: m.label.split(' ')[0].substring(0, 3),
-        'Uplift After Job': uplift,
-        'Uplift +30 Days': uplift30,
+        recoveryAfterJob: uplift,
+        recoveryPlus30: uplift30,
         jobs: monthJobs.length,
       };
     });
@@ -51,9 +51,9 @@ function MonthlyImpactChart() {
     <Card className="border-0 shadow-sm bg-white">
       <CardHeader className="pb-2 pt-5 px-6 border-b border-slate-100">
         <CardTitle className="text-sm font-bold text-[#073674] uppercase tracking-wider">
-          Monthly Production Impact (bbl/d)
+          Monthly Production Recovery (bbl/d)
         </CardTitle>
-        <p className="text-xs text-slate-400 mt-0.5">Net production gain/loss per month across all service lines</p>
+        <p className="text-xs text-slate-400 mt-0.5">Net production recovery per month across all service lines</p>
       </CardHeader>
       <CardContent className="pt-4 pb-4 px-4">
         <ResponsiveContainer width="100%" height={220}>
@@ -63,17 +63,17 @@ function MonthlyImpactChart() {
             <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <Tooltip
               contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
-              formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toLocaleString()} bbl/d`, '']}
+              formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toLocaleString()} bbl/d`, 'Production Recovery']}
             />
             <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-            <Bar dataKey="Uplift After Job" fill="#073674" radius={[3, 3, 0, 0]}>
+            <Bar dataKey="recoveryAfterJob" name="Recovery After Job" fill="#073674" radius={[3, 3, 0, 0]}>
               {data.map((entry, i) => (
-                <Cell key={i} fill={entry['Uplift After Job'] >= 0 ? '#073674' : '#ef4444'} />
+                <Cell key={i} fill={entry.recoveryAfterJob >= 0 ? '#073674' : '#ef4444'} />
               ))}
             </Bar>
-            <Bar dataKey="Uplift +30 Days" fill="#0891b2" radius={[3, 3, 0, 0]}>
+            <Bar dataKey="recoveryPlus30" name="Recovery +30 Days" fill="#0891b2" radius={[3, 3, 0, 0]}>
               {data.map((entry, i) => (
-                <Cell key={i} fill={entry['Uplift +30 Days'] >= 0 ? '#0891b2' : '#f97316'} />
+                <Cell key={i} fill={entry.recoveryPlus30 >= 0 ? '#0891b2' : '#f97316'} />
               ))}
             </Bar>
           </BarChart>
@@ -154,7 +154,7 @@ function UpliftByServiceLine() {
             <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
             <Tooltip
               contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
-              formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toLocaleString()} bbl/d`, '']}
+              formatter={(val: number) => [`${val >= 0 ? '+' : ''}${val.toLocaleString()} bbl/d`, 'Production Recovery']}
             />
             <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
             <Bar dataKey="upliftAfter" name="After Job" fill="#073674" radius={[3, 3, 0, 0]} />

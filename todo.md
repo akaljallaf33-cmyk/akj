@@ -48,3 +48,5 @@
 - [x] Fix platform and well dropdown list not scrollable on mobile Safari
 - [x] Make This Month stat card clickable on Overview — show a dialog listing the jobs for that month
 - [x] Split production recovery KPI cards into separate CT and WL rows on Overview page
+- [x] Split CT and WL recovery cards into 4 individual boxes (CT Recovery After, CT +30 Days, WL Recovery After, WL +30 Days)
+- [x] Make Failed and Partially Successful status cards clickable to show a popup listing those jobs

@@ -319,6 +319,7 @@ function ThisMonthJobsDialog({ open, onClose, jobs, monthLabel }: {
 export default function OverviewTab() {
   const { jobs } = useData();
   const [showThisMonthJobs, setShowThisMonthJobs] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'Failed' | 'Partially Successful' | null>(null);
 
   const totalJobs = jobs.length;
   const totalSuccessful = jobs.filter(j => j.status === 'Successful').length;
@@ -418,82 +419,67 @@ export default function OverviewTab() {
         ))}
       </div>
 
-      {/* Production Recovery — CT row */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <Card className="border-0 shadow-sm bg-white">
-          <CardContent className="pt-4 pb-4 px-5">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#073674] mb-3 flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#073674]" />
-              Coiled Tubing — Production Recovery
-              <span className="ml-auto text-slate-400 font-normal normal-case tracking-normal">{ctRecovery.count} job{ctRecovery.count !== 1 ? 's' : ''}</span>
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Recovery After Job</p>
-                <p className={`text-2xl font-bold font-mono ${ctRecovery.after >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {ctRecovery.after >= 0 ? '+' : ''}{ctRecovery.after.toLocaleString()}
+      {/* Production Recovery — 4 individual boxes */}
+      <div className="grid grid-cols-2 gap-4">
+        {[
+          { label: 'CT Recovery After Job', value: ctRecovery.after, sub: `${ctRecovery.count} CT job${ctRecovery.count !== 1 ? 's' : ''}`, color: '#073674', dot: '#073674' },
+          { label: 'CT Recovery at +30 Days', value: ctRecovery.days30, sub: 'Coiled Tubing', color: '#073674', dot: '#073674' },
+          { label: 'WL Recovery After Job', value: wlRecovery.after, sub: `${wlRecovery.count} WL job${wlRecovery.count !== 1 ? 's' : ''}`, color: '#0d6efd', dot: '#0d6efd' },
+          { label: 'WL Recovery at +30 Days', value: wlRecovery.days30, sub: 'Wireline', color: '#0d6efd', dot: '#0d6efd' },
+        ].map((box, i) => (
+          <motion.div key={box.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.06 }}>
+            <Card className="border-0 shadow-sm bg-white">
+              <CardContent className="pt-4 pb-4 px-5">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: box.dot }} />
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 leading-tight">{box.label}</p>
+                </div>
+                <p className={`text-2xl font-bold font-mono ${box.value >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {box.value >= 0 ? '+' : ''}{box.value.toLocaleString()}
                 </p>
-                <p className="text-xs text-slate-400">bbl/d</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Recovery at +30 Days</p>
-                <p className={`text-2xl font-bold font-mono ${ctRecovery.days30 >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {ctRecovery.days30 >= 0 ? '+' : ''}{ctRecovery.days30.toLocaleString()}
-                </p>
-                <p className="text-xs text-slate-400">bbl/d</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Production Recovery — WL row */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
-        <Card className="border-0 shadow-sm bg-white">
-          <CardContent className="pt-4 pb-4 px-5">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#0d6efd] mb-3 flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#0d6efd]" />
-              Wireline — Production Recovery
-              <span className="ml-auto text-slate-400 font-normal normal-case tracking-normal">{wlRecovery.count} job{wlRecovery.count !== 1 ? 's' : ''}</span>
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Recovery After Job</p>
-                <p className={`text-2xl font-bold font-mono ${wlRecovery.after >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {wlRecovery.after >= 0 ? '+' : ''}{wlRecovery.after.toLocaleString()}
-                </p>
-                <p className="text-xs text-slate-400">bbl/d</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Recovery at +30 Days</p>
-                <p className={`text-2xl font-bold font-mono ${wlRecovery.days30 >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {wlRecovery.days30 >= 0 ? '+' : ''}{wlRecovery.days30.toLocaleString()}
-                </p>
-                <p className="text-xs text-slate-400">bbl/d</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+                <p className="text-xs text-slate-400 mt-0.5">bbl/d &middot; {box.sub}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
 
       {/* Status Summary Row */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Successful', count: totalSuccessful, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
-          { label: 'Partially Successful', count: totalPartial, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
-          { label: 'Failed', count: totalFailed, icon: XCircle, color: 'text-red-500', bg: 'bg-red-50 border-red-200' },
+          { label: 'Successful', count: totalSuccessful, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', status: 'Successful' as const, clickable: false },
+          { label: 'Partially Succ.', count: totalPartial, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', status: 'Partially Successful' as const, clickable: true },
+          { label: 'Failed', count: totalFailed, icon: XCircle, color: 'text-red-500', bg: 'bg-red-50 border-red-200', status: 'Failed' as const, clickable: true },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 + i * 0.07 }}>
-            <div className={`rounded-xl border px-5 py-4 flex items-center gap-4 ${s.bg}`}>
-              <s.icon className={`w-7 h-7 ${s.color}`} />
-              <div>
+            <div
+              className={`rounded-xl border px-4 py-4 flex items-center gap-3 transition-all ${
+                s.clickable && s.count > 0 ? 'cursor-pointer hover:shadow-md active:scale-[0.98]' : ''
+              } ${s.bg}`}
+              onClick={() => s.clickable && s.count > 0 && setStatusFilter(s.status as 'Failed' | 'Partially Successful')}
+            >
+              <s.icon className={`w-6 h-6 flex-shrink-0 ${s.color}`} />
+              <div className="min-w-0">
                 <p className="text-2xl font-bold font-mono text-slate-800">{s.count}</p>
-                <p className="text-xs text-slate-500 font-medium">{s.label}</p>
+                <p className="text-xs text-slate-500 font-medium leading-tight">{s.label}</p>
+                {s.clickable && s.count > 0 && (
+                  <p className="text-xs text-slate-400 flex items-center gap-0.5 mt-0.5">tap <ChevronRight className="w-3 h-3" /></p>
+                )}
               </div>
             </div>
           </motion.div>
         ))}
       </div>
+
+      {/* Status Jobs Dialog */}
+      {statusFilter && (
+        <ThisMonthJobsDialog
+          open={!!statusFilter}
+          onClose={() => setStatusFilter(null)}
+          jobs={jobs.filter(j => j.status === statusFilter)}
+          monthLabel={`${statusFilter} Jobs`}
+        />
+      )}
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -12,6 +12,7 @@ import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight, Cl
 import { WellJob, ServiceLine, SERVICE_LINE_LABELS } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { useRole } from '@/hooks/useRole';
+import WellHistoryDialog from './WellHistoryDialog';
 import JobDialog from './JobDialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -92,7 +93,7 @@ function calcWLPayback(job: WellJob, oilPrice: number): number | null {
 }
 
 export default function ServiceLineTab({ serviceLine }: Props) {
-  const { getJobsByServiceLine, deleteJob } = useData();
+  const { getJobsByServiceLine, deleteJob, jobs: allJobs } = useData();
   const jobs = getJobsByServiceLine(serviceLine);
   const { isAdmin } = useRole();
   const oilPrice = getStoredOilPrice();
@@ -100,6 +101,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editJob, setEditJob] = useState<WellJob | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [wellHistory, setWellHistory] = useState<{ platform: string; wellNumber: string } | null>(null);
 
   const handleEdit = (job: WellJob) => { setEditJob(job); setDialogOpen(true); };
   const handleAdd = () => { setEditJob(null); setDialogOpen(true); };
@@ -350,7 +352,11 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                       >
                         <TableCell className="text-slate-400 text-xs font-mono">{idx + 1}</TableCell>
                         <TableCell className="font-semibold text-slate-700 text-sm">{job.platform}</TableCell>
-                        <TableCell className="font-mono text-sm text-[#073674] font-semibold">{job.wellNumber}</TableCell>
+                        <TableCell
+                          className="font-mono text-sm text-[#073674] font-semibold cursor-pointer hover:underline"
+                          onClick={() => setWellHistory({ platform: job.platform, wellNumber: job.wellNumber })}
+                          title="View well history"
+                        >{job.wellNumber}</TableCell>
                         {serviceLine === 'coiled-tubing' && (
                           <TableCell>
                             {job.unit ? (
@@ -418,9 +424,21 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                 </TableBody>
               </Table>
             </div>
+
           )}
         </CardContent>
       </Card>
+
+      {/* Well History Dialog */}
+      {wellHistory && (
+        <WellHistoryDialog
+          open={!!wellHistory}
+          onClose={() => setWellHistory(null)}
+          platform={wellHistory.platform}
+          wellNumber={wellHistory.wellNumber}
+          jobs={allJobs.filter(j => j.platform === wellHistory.platform && j.wellNumber === wellHistory.wellNumber)}
+        />
+      )}
 
       {/* Add/Edit Dialog */}
       <JobDialog

@@ -13,6 +13,7 @@ import { TrendingUp, TrendingDown, Activity, CheckCircle2, AlertCircle, XCircle,
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import WellHistoryDialog from '@/components/WellHistoryDialog';
 
 const SL_COLORS: Record<ServiceLine, string> = {
   'coiled-tubing': '#073674',
@@ -93,7 +94,7 @@ function MonthlyImpactChart() {
 
 // ─── Production Recovery Leaderboard ─────────────────────────────────────────
 
-function ProductionRecoveryLeaderboard() {
+function ProductionRecoveryLeaderboard({ onWellClick }: { onWellClick: (platform: string, wellNumber: string) => void }) {
   const { jobs } = useData();
 
   const ranked = useMemo(() => {
@@ -151,7 +152,8 @@ function ProductionRecoveryLeaderboard() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className="flex items-center gap-3 px-5 py-3 hover:bg-blue-50/40 transition-colors"
+                className="flex items-center gap-3 px-5 py-3 hover:bg-blue-50/40 transition-colors cursor-pointer"
+                onClick={() => onWellClick(row.platform, row.wellNumber)}
               >
                 {/* Rank badge */}
                 <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
@@ -325,6 +327,7 @@ export default function OverviewTab() {
   const { jobs } = useData();
   const [showThisMonthJobs, setShowThisMonthJobs] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'Failed' | 'Partially Successful' | null>(null);
+  const [wellHistory, setWellHistory] = useState<{ platform: string; wellNumber: string } | null>(null);
 
   const totalJobs = jobs.length;
   const totalSuccessful = jobs.filter(j => j.status === 'Successful').length;
@@ -486,11 +489,22 @@ export default function OverviewTab() {
         />
       )}
 
+      {/* Well History Dialog */}
+      {wellHistory && (
+        <WellHistoryDialog
+          open={!!wellHistory}
+          onClose={() => setWellHistory(null)}
+          platform={wellHistory.platform}
+          wellNumber={wellHistory.wellNumber}
+          jobs={jobs.filter(j => j.platform === wellHistory.platform && j.wellNumber === wellHistory.wellNumber)}
+        />
+      )}
+
       {/* Charts Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthlyImpactChart />
         <div className="space-y-4">
-          <ProductionRecoveryLeaderboard />
+          <ProductionRecoveryLeaderboard onWellClick={(p, w) => setWellHistory({ platform: p, wellNumber: w })} />
           <ProductionRecoveryByServiceLine />
         </div>
       </div>

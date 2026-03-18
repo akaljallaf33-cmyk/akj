@@ -54,3 +54,5 @@
 - [x] Add Total Production Loss KPI card (bbl/d lost + dollar impact) to Finance page
 - [x] Add Status badge column to Finance ROI table
 - [x] Show job notes in the Failed/Partially Successful popup on Overview page
+- [x] Create WellHistoryDialog component with job timeline and production trend chart
+- [x] Wire WellHistoryDialog to Overview leaderboard and CT/WL job tables

@@ -76,3 +76,4 @@
 - [x] Add "Expected Recovery This Month" stat below the This Month card on Overview, sourced from upcoming well plans for current month
 - [x] Keep all planned wells in the Overview expected strip (show total expected including completed, not just pending)
 - [x] Add monthly Expected vs Actual recovery bar chart to Well History tab (all 12 months side by side)
+- [x] Collapse Well Planning list by default — show only summary stats, tap to expand individual wells

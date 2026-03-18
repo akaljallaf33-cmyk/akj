@@ -72,6 +72,7 @@ export default function WellPlanningSection({ selectedYear }: { selectedYear: nu
   const [form, setForm] = useState<PlanFormState>(EMPTY_FORM);
   const [formWells, setFormWells] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [showList, setShowList] = useState(false);
 
   // Fetch plans for the selected year
   const { data: plans = [], isLoading } = trpc.wellPlans.list.useQuery(
@@ -218,21 +219,33 @@ export default function WellPlanningSection({ selectedYear }: { selectedYear: nu
         )}
       </div>
 
-      {/* Stats row */}
+      {/* Stats row — tap to expand/collapse the list */}
       {matchedPlans.length > 0 && (
-        <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100">
-          {[
-            { label: 'Total Planned', value: stats.total, color: 'text-[#073674]' },
-            { label: 'Completed', value: stats.done, color: 'text-emerald-600' },
-            { label: 'Pending', value: stats.pending, color: 'text-amber-600' },
-            { label: 'Expected Gain', value: `+${stats.totalExpected} bbl/d`, color: 'text-slate-700' },
-          ].map(s => (
-            <div key={s.label} className="px-4 py-3 text-center">
-              <div className={`text-lg font-bold ${s.color}`}>{s.value}</div>
-              <div className="text-xs text-slate-400 font-medium">{s.label}</div>
-            </div>
-          ))}
-        </div>
+        <button
+          onClick={() => setShowList(v => !v)}
+          className="w-full text-left"
+        >
+          <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100 hover:bg-slate-50 transition-colors">
+            {[
+              { label: 'Total Planned', value: stats.total, color: 'text-[#073674]' },
+              { label: 'Completed', value: stats.done, color: 'text-emerald-600' },
+              { label: 'Pending', value: stats.pending, color: 'text-amber-600' },
+              { label: 'Expected Gain', value: `+${stats.totalExpected} bbl/d`, color: 'text-slate-700' },
+            ].map((s, i) => (
+              <div key={s.label} className="px-4 py-3 text-center relative">
+                <div className={`text-lg font-bold ${s.color}`}>{s.value}</div>
+                <div className="text-xs text-slate-400 font-medium">{s.label}</div>
+                {i === 3 && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {showList
+                      ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                      : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </button>
       )}
 
       {/* Add / Edit Form */}
@@ -376,7 +389,17 @@ export default function WellPlanningSection({ selectedYear }: { selectedYear: nu
         )}
       </AnimatePresence>
 
-      {/* Plan List */}
+      {/* Plan List — collapsible */}
+      <AnimatePresence initial={false}>
+      {showList && (
+      <motion.div
+        key="plan-list"
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ height: 'auto', opacity: 1 }}
+        exit={{ height: 0, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="overflow-hidden"
+      >
       <div className="divide-y divide-slate-50">
         {isLoading && (
           <div className="p-8 text-center text-slate-400 text-sm">Loading plans…</div>
@@ -394,7 +417,7 @@ export default function WellPlanningSection({ selectedYear }: { selectedYear: nu
           </div>
         )}
 
-        {matchedPlans.map(plan => {
+        {!isLoading && matchedPlans.length > 0 && matchedPlans.map(plan => {
           const isDone = plan.matchedJobs.length > 0;
           const isExpanded = expandedId === plan.id;
 
@@ -548,6 +571,9 @@ export default function WellPlanningSection({ selectedYear }: { selectedYear: nu
           );
         })}
       </div>
+      </motion.div>
+      )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -247,9 +247,9 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                 {/* Platform filter for this chart */}
                 {availablePlatforms.length > 1 && (
                   <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                    <SelectTrigger className="h-7 text-xs w-32 border-slate-200 bg-slate-50 shrink-0">
+                    <SelectTrigger className="h-7 text-xs w-40 border-slate-200 bg-slate-50 shrink-0">
                       <Filter className="w-3 h-3 mr-1 text-slate-400" />
-                      <SelectValue />
+                      <SelectValue placeholder="All platforms" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All platforms</SelectItem>
@@ -346,9 +346,9 @@ export default function ServiceLineTab({ serviceLine }: Props) {
               {/* Platform filter for table */}
               {availablePlatforms.length > 1 && (
                 <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                  <SelectTrigger className="h-8 text-xs w-36 border-slate-200 bg-slate-50">
+                  <SelectTrigger className="h-8 text-xs w-44 border-slate-200 bg-slate-50">
                     <Filter className="w-3 h-3 mr-1 text-slate-400" />
-                    <SelectValue />
+                    <SelectValue placeholder="All platforms" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All platforms</SelectItem>

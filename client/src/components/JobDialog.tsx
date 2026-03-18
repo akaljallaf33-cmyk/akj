@@ -123,7 +123,7 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ overflowX: 'visible' }}>
         <DialogHeader>
           <DialogTitle className="text-[#073674] text-xl font-bold">
             {editJob ? 'Edit' : 'Add New'} Job — {SERVICE_LINE_LABELS[serviceLine]}
@@ -146,10 +146,10 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0" align="start">
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                 <Command>
                   <CommandInput placeholder="Search platform…" className="h-9" />
-                  <CommandList>
+                  <CommandList className="max-h-[200px]">
                     <CommandEmpty>No platform found.</CommandEmpty>
                     <CommandGroup>
                       {PLATFORM_NAMES.map(p => (
@@ -189,10 +189,10 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0" align="start">
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                 <Command>
                   <CommandInput placeholder="Search well…" className="h-9" />
-                  <CommandList>
+                  <CommandList className="max-h-[200px]">
                     <CommandEmpty>No well found.</CommandEmpty>
                     <CommandGroup>
                       {getWellsForPlatform(form.platform).map(w => (

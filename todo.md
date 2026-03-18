@@ -45,3 +45,4 @@
 - [x] Add Payback Days column to Wireline job table
 - [x] Create platform-wells data file with all 18 platforms and their wells
 - [x] Replace free-text Platform and Well Number fields with cascading dropdowns in JobDialog
+- [x] Fix platform and well dropdown list not scrollable on mobile Safari

@@ -301,6 +301,11 @@ function ThisMonthJobsDialog({ open, onClose, jobs, monthLabel }: {
                           {recovery >= 0 ? '+' : ''}{recovery.toLocaleString()} bbl/d recovery
                         </p>
                       )}
+                      {job.notes && (
+                        <p className="text-xs text-slate-500 mt-1 italic border-l-2 border-slate-200 pl-2">
+                          {job.notes}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${statusColor}`}>

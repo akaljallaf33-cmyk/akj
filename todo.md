@@ -53,3 +53,4 @@
 - [x] Fix Finance page to show Payback/ROI for all jobs regardless of status when cost data exists
 - [x] Add Total Production Loss KPI card (bbl/d lost + dollar impact) to Finance page
 - [x] Add Status badge column to Finance ROI table
+- [x] Show job notes in the Failed/Partially Successful popup on Overview page

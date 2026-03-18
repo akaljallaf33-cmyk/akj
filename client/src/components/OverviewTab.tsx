@@ -15,10 +15,9 @@ import { motion } from 'framer-motion';
 const SL_COLORS: Record<ServiceLine, string> = {
   'coiled-tubing': '#073674',
   'wireline': '#0d6efd',
-  'pumping': '#0891b2',
 };
 
-const SL_LIST: ServiceLine[] = ['coiled-tubing', 'wireline', 'pumping'];
+const SL_LIST: ServiceLine[] = ['coiled-tubing', 'wireline'];
 
 function MonthlyImpactChart() {
   const { jobs } = useData();

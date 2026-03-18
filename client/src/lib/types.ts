@@ -1,14 +1,13 @@
 // Well Intervention Dashboard — Data Types
 // Design: Dragon Oil corporate branding, white & blue (#073674)
 
-export type ServiceLine = 'coiled-tubing' | 'wireline' | 'pumping';
+export type ServiceLine = 'coiled-tubing' | 'wireline';
 
 export type JobStatus = 'Successful' | 'Partially Successful' | 'Failed';
 
 export type JobType = {
   'coiled-tubing': string[];
   'wireline': string[];
-  'pumping': string[];
 };
 
 export const JOB_TYPES: JobType = {
@@ -27,17 +26,6 @@ export const JOB_TYPES: JobType = {
   'wireline': [
     'AP',
     'RST',
-  ],
-  'pumping': [
-    'Acid Stimulation',
-    'Matrix Acidizing',
-    'Hydraulic Fracturing',
-    'Cementing',
-    'Nitrogen Pumping',
-    'Scale Squeeze',
-    'Water Shut-off',
-    'Chemical Injection',
-    'Other',
   ],
 };
 
@@ -77,7 +65,6 @@ export interface MonthlyImpact {
 export const SERVICE_LINE_LABELS: Record<ServiceLine, string> = {
   'coiled-tubing': 'Coiled Tubing',
   'wireline': 'Wireline',
-  'pumping': 'Pumping',
 };
 
 export const MONTHS_2026 = [

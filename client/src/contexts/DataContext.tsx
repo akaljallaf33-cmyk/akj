@@ -33,7 +33,7 @@ function rowToJob(row: {
 }): WellJob {
   return {
     id: String(row.id),
-    serviceLine: row.serviceLine,
+    serviceLine: row.serviceLine as ServiceLine,
     platform: row.platform,
     wellNumber: row.wellNumber,
     unit: row.unit ?? undefined,

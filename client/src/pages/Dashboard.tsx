@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Layers, Radio, Droplets, LogOut, DollarSign } from 'lucide-react';
+import { Activity, Layers, Radio, LogOut, DollarSign } from 'lucide-react';
 import OverviewTab from '@/components/OverviewTab';
 import ServiceLineTab from '@/components/ServiceLineTab';
 import Finance from '@/pages/Finance';
@@ -18,7 +18,6 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; color: string }[]
   { id: 'overview',       label: 'Overview',      icon: Activity,    color: '#073674' },
   { id: 'coiled-tubing',  label: 'Coiled Tubing', icon: Layers,      color: '#073674' },
   { id: 'wireline',       label: 'Wireline',      icon: Radio,       color: '#0d6efd' },
-  { id: 'pumping',        label: 'Pumping',        icon: Droplets,    color: '#0891b2' },
   { id: 'finance',        label: 'Finance & ROI',  icon: DollarSign,  color: '#059669' },
 ];
 
@@ -149,7 +148,6 @@ export default function Dashboard() {
             {activeTab === 'overview' && <OverviewTab />}
             {activeTab === 'coiled-tubing' && <ServiceLineTab serviceLine="coiled-tubing" />}
             {activeTab === 'wireline' && <ServiceLineTab serviceLine="wireline" />}
-            {activeTab === 'pumping' && <ServiceLineTab serviceLine="pumping" />}
             {activeTab === 'finance' && <Finance />}
           </motion.div>
         </AnimatePresence>

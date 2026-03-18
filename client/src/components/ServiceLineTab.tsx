@@ -1,15 +1,17 @@
-// Well Intervention Dashboard — Service Line Tab
-// Shows all jobs for a specific service line with add/edit/delete and production data
+// ServiceLineTab — Shows all jobs for a specific service line with add/edit/delete and production data
+// Includes platform filter that scopes the Well-by-Well chart and job table
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight, Clock } from 'lucide-react';
-import { WellJob, ServiceLine, SERVICE_LINE_LABELS } from '@/lib/types';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight, Clock, Filter } from 'lucide-react';
+import { WellJob, ServiceLine, SERVICE_LINE_LABELS, MONTHS_2026 } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { useRole } from '@/hooks/useRole';
 import JobDialog from './JobDialog';
@@ -23,7 +25,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
-import { MONTHS_2026 } from '@/lib/types';
 
 interface Props {
   serviceLine: ServiceLine;
@@ -69,7 +70,6 @@ function getStoredOilPrice(): number {
     const stored = localStorage.getItem('wi_oil_prices');
     if (!stored) return 75;
     const prices: Record<string, number> = JSON.parse(stored);
-    // Use the most recent month's price as a proxy for payback calculation
     const keys = Object.keys(prices).sort().reverse();
     for (const k of keys) {
       if (prices[k] > 0) return prices[k];
@@ -100,13 +100,27 @@ export default function ServiceLineTab({ serviceLine }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editJob, setEditJob] = useState<WellJob | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
+
   const handleEdit = (job: WellJob) => { setEditJob(job); setDialogOpen(true); };
   const handleAdd = () => { setEditJob(null); setDialogOpen(true); };
   const handleDelete = () => {
     if (deleteId) { deleteJob(deleteId); toast.success('Job record deleted'); setDeleteId(null); }
   };
 
-  // KPI summary
+  // Derive unique platforms from jobs (sorted alphabetically)
+  const availablePlatforms = useMemo(() => {
+    const set = new Set(jobs.map(j => j.platform));
+    return Array.from(set).sort();
+  }, [jobs]);
+
+  // Filtered jobs for chart and table
+  const filteredJobs = useMemo(() => {
+    if (platformFilter === 'all') return jobs;
+    return jobs.filter(j => j.platform === platformFilter);
+  }, [jobs, platformFilter]);
+
+  // KPI summary — always across ALL jobs (not filtered)
   const totalJobs = jobs.length;
   const successful = jobs.filter(j => j.status === 'Successful').length;
   const totalRecoveryAfter = jobs.reduce((sum, j) => {
@@ -119,9 +133,9 @@ export default function ServiceLineTab({ serviceLine }: Props) {
   }, 0);
 
   const label = SERVICE_LINE_LABELS[serviceLine];
-  const accentColor = serviceLine === 'coiled-tubing' ? '#073674' : serviceLine === 'wireline' ? '#0d6efd' : '#0891b2';
+  const accentColor = serviceLine === 'coiled-tubing' ? '#073674' : '#0d6efd';
 
-  // Monthly uplift data for this service line — always Jan to Dec in order
+  // Monthly uplift — always uses ALL jobs (platform-agnostic overview)
   const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const monthlyData = MONTHS_2026.map((m, idx) => {
     const mJobs = jobs.filter(j => j.endDate.startsWith(m.value));
@@ -132,25 +146,37 @@ export default function ServiceLineTab({ serviceLine }: Props) {
     return { month: MONTH_LABELS[idx], uplift, jobs: mJobs.length };
   });
 
+  // Well-by-Well chart — uses FILTERED jobs
+  const wellChartData = useMemo(() => {
+    return filteredJobs
+      .filter(j => j.productionBefore !== null || j.productionAfter !== null)
+      .map(j => ({
+        well: j.wellNumber,
+        'Before': j.productionBefore ?? 0,
+        'After': j.productionAfter ?? 0,
+        '+30 Days': j.production30Days ?? 0,
+      }));
+  }, [filteredJobs]);
+
   return (
     <div className="space-y-6">
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-    { label: 'Total Jobs', value: totalJobs, sub: 'in 2026' },
-        { label: 'Successful', value: successful, sub: `${totalJobs > 0 ? ((successful/totalJobs)*100).toFixed(0) : 0}% success rate` },
-        {
-          label: 'Production Recovery After Job',
-          value: (totalRecoveryAfter >= 0 ? '+' : '') + totalRecoveryAfter.toLocaleString(),
-          sub: 'bbl/d net gain',
-          positive: totalRecoveryAfter >= 0
-        },
-        {
-          label: 'Production Recovery at +30 Days',
-          value: (totalRecovery30 >= 0 ? '+' : '') + totalRecovery30.toLocaleString(),
-          sub: 'bbl/d sustained',
-          positive: totalRecovery30 >= 0
-        },
+          { label: 'Total Jobs', value: totalJobs, sub: 'in 2026' },
+          { label: 'Successful', value: successful, sub: `${totalJobs > 0 ? ((successful/totalJobs)*100).toFixed(0) : 0}% success rate` },
+          {
+            label: 'Production Recovery After Job',
+            value: (totalRecoveryAfter >= 0 ? '+' : '') + totalRecoveryAfter.toLocaleString(),
+            sub: 'bbl/d net gain',
+            positive: totalRecoveryAfter >= 0
+          },
+          {
+            label: 'Production Recovery at +30 Days',
+            value: (totalRecovery30 >= 0 ? '+' : '') + totalRecovery30.toLocaleString(),
+            sub: 'bbl/d sustained',
+            positive: totalRecovery30 >= 0
+          },
         ].map((kpi, i) => (
           <motion.div
             key={kpi.label}
@@ -177,11 +203,11 @@ export default function ServiceLineTab({ serviceLine }: Props) {
       {/* Charts Row: Monthly Recovery + Well-by-Well */}
       {jobs.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {/* Monthly Production Recovery Chart */}
+          {/* Monthly Production Recovery Chart — all platforms */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
             <div className="bg-white rounded-xl shadow-sm border-0 px-6 pt-5 pb-4 h-full">
               <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: accentColor }}>Monthly Production Recovery (bbl/d)</p>
-              <p className="text-xs text-slate-400 mb-4">Net production recovery per month — {label}</p>
+              <p className="text-xs text-slate-400 mb-4">Net production recovery per month — all platforms</p>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={monthlyData} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -207,46 +233,68 @@ export default function ServiceLineTab({ serviceLine }: Props) {
             </div>
           </motion.div>
 
-          {/* Well-by-Well Before vs After vs +30 Days Chart */}
+          {/* Well-by-Well chart — filtered by platform */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
             <div className="bg-white rounded-xl shadow-sm border-0 px-6 pt-5 pb-4 h-full">
-              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: accentColor }}>Well-by-Well Production (bbl/d)</p>
-              <p className="text-xs text-slate-400 mb-4">Before job vs After job vs +30 Days — per well</p>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart
-                  data={jobs
-                    .filter(j => j.productionBefore !== null || j.productionAfter !== null)
-                    .map(j => ({
-                      well: `${j.platform} ${j.wellNumber}`,
-                      'Before': j.productionBefore ?? 0,
-                      'After': j.productionAfter ?? 0,
-                      '+30 Days': j.production30Days ?? 0,
-                    }))}
-                  barGap={2}
-                  barCategoryGap="25%"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis
-                    dataKey="well"
-                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval={0}
-                    angle={-30}
-                    textAnchor="end"
-                    height={48}
-                  />
-                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
-                    formatter={(val: number, name: string) => [`${val.toLocaleString()} bbl/d`, name]}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                  <Bar dataKey="Before" fill="#94a3b8" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="After" fill={accentColor} radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="+30 Days" fill="#0891b2" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>Well-by-Well Production (bbl/d)</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Before / After / +30 Days
+                    {platformFilter !== 'all' ? ` — ${platformFilter}` : ' — all platforms'}
+                  </p>
+                </div>
+                {/* Platform filter for this chart */}
+                {availablePlatforms.length > 1 && (
+                  <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                    <SelectTrigger className="h-7 text-xs w-32 border-slate-200 bg-slate-50 shrink-0">
+                      <Filter className="w-3 h-3 mr-1 text-slate-400" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All platforms</SelectItem>
+                      {availablePlatforms.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              {wellChartData.length === 0 ? (
+                <div className="flex items-center justify-center h-[200px] text-slate-300 text-sm">
+                  No production data for this platform
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart
+                    data={wellChartData}
+                    barGap={2}
+                    barCategoryGap="25%"
+                    margin={{ top: 5, right: 5, left: -10, bottom: wellChartData.length > 6 ? 48 : 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis
+                      dataKey="well"
+                      tick={{ fontSize: 10, fill: '#94a3b8' }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                      angle={wellChartData.length > 6 ? -35 : 0}
+                      textAnchor={wellChartData.length > 6 ? 'end' : 'middle'}
+                      height={wellChartData.length > 6 ? 52 : 24}
+                    />
+                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
+                      formatter={(val: number, name: string) => [`${val.toLocaleString()} bbl/d`, name]}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                    <Bar dataKey="Before" fill="#94a3b8" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="After" fill={accentColor} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="+30 Days" fill="#0891b2" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </motion.div>
         </div>
@@ -285,22 +333,46 @@ export default function ServiceLineTab({ serviceLine }: Props) {
 
       {/* Table Card */}
       <Card className="border-0 shadow-sm bg-white">
-        <CardHeader className="flex flex-row items-center justify-between pb-3 pt-5 px-6 border-b border-slate-100">
-          <CardTitle className="text-base font-bold text-[#073674] flex items-center gap-2">
-            <ArrowUpRight className="w-4 h-4" />
-            {label} — Well Jobs 2026
-            <span className="ml-2 bg-[#073674]/10 text-[#073674] text-xs font-semibold px-2 py-0.5 rounded-full">
-              {totalJobs} {totalJobs === 1 ? 'job' : 'jobs'}
-            </span>
-          </CardTitle>
-          {isAdmin && (
-            <Button
-              onClick={handleAdd}
-              className="bg-[#073674] hover:bg-[#052a5c] text-white text-sm h-8 px-4 gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Add Job
-            </Button>
-          )}
+        <CardHeader className="pb-3 pt-5 px-6 border-b border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-base font-bold text-[#073674] flex items-center gap-2">
+              <ArrowUpRight className="w-4 h-4" />
+              {label} — Well Jobs 2026
+              <span className="ml-1 bg-[#073674]/10 text-[#073674] text-xs font-semibold px-2 py-0.5 rounded-full">
+                {filteredJobs.length}{platformFilter !== 'all' ? ` / ${totalJobs}` : ''} {filteredJobs.length === 1 ? 'job' : 'jobs'}
+              </span>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {/* Platform filter for table */}
+              {availablePlatforms.length > 1 && (
+                <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                  <SelectTrigger className="h-8 text-xs w-36 border-slate-200 bg-slate-50">
+                    <Filter className="w-3 h-3 mr-1 text-slate-400" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All platforms</SelectItem>
+                    {availablePlatforms.map(p => {
+                      const count = jobs.filter(j => j.platform === p).length;
+                      return (
+                        <SelectItem key={p} value={p}>
+                          {p} <span className="text-slate-400 ml-1">({count})</span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              )}
+              {isAdmin && (
+                <Button
+                  onClick={handleAdd}
+                  className="bg-[#073674] hover:bg-[#052a5c] text-white text-sm h-8 px-4 gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Add Job
+                </Button>
+              )}
+            </div>
+          </div>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -311,6 +383,17 @@ export default function ServiceLineTab({ serviceLine }: Props) {
               </div>
               <p className="font-medium text-slate-500">No jobs recorded yet</p>
               <p className="text-sm mt-1">Click "Add Job" to record your first {label} intervention</p>
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+              <Filter className="w-8 h-8 mb-2 text-slate-200" />
+              <p className="font-medium text-slate-500">No jobs for {platformFilter}</p>
+              <button
+                className="text-xs text-[#073674] mt-2 underline"
+                onClick={() => setPlatformFilter('all')}
+              >
+                Clear filter
+              </button>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -329,16 +412,16 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">After (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">+30 Days (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Production Recovery</TableHead>
-                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
-                     {serviceLine === 'wireline' && (
-                       <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Payback</TableHead>
-                     )}
-                     {isAdmin && <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</TableHead>}
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
+                    {serviceLine === 'wireline' && (
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Payback</TableHead>
+                    )}
+                    {isAdmin && <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   <AnimatePresence>
-                    {jobs.map((job, idx) => (
+                    {filteredJobs.map((job, idx) => (
                       <motion.tr
                         key={job.id}
                         initial={{ opacity: 0, x: -10 }}
@@ -417,7 +500,6 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                 </TableBody>
               </Table>
             </div>
-
           )}
         </CardContent>
       </Card>

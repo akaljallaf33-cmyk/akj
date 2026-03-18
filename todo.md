@@ -47,3 +47,4 @@
 - [x] Replace free-text Platform and Well Number fields with cascading dropdowns in JobDialog
 - [x] Fix platform and well dropdown list not scrollable on mobile Safari
 - [x] Make This Month stat card clickable on Overview — show a dialog listing the jobs for that month
+- [x] Split production recovery KPI cards into separate CT and WL rows on Overview page

@@ -325,14 +325,19 @@ export default function OverviewTab() {
   const totalPartial = jobs.filter(j => j.status === 'Partially Successful').length;
   const totalFailed = jobs.filter(j => j.status === 'Failed').length;
 
-  const totalRecoveryAfter = jobs.reduce((sum, j) => {
-    if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
-    return sum;
-  }, 0);
-  const totalRecovery30 = jobs.reduce((sum, j) => {
-    if (j.productionBefore !== null && j.production30Days !== null) return sum + (j.production30Days - j.productionBefore);
-    return sum;
-  }, 0);
+  const calcRecovery = (sl: ServiceLine) => ({
+    after: jobs.filter(j => j.serviceLine === sl).reduce((sum, j) => {
+      if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
+      return sum;
+    }, 0),
+    days30: jobs.filter(j => j.serviceLine === sl).reduce((sum, j) => {
+      if (j.productionBefore !== null && j.production30Days !== null) return sum + (j.production30Days - j.productionBefore);
+      return sum;
+    }, 0),
+    count: jobs.filter(j => j.serviceLine === sl).length,
+  });
+  const ctRecovery = calcRecovery('coiled-tubing');
+  const wlRecovery = calcRecovery('wireline');
 
   // This month
   const now = new Date();
@@ -346,8 +351,6 @@ export default function OverviewTab() {
   const kpis = [
     { label: 'Total Jobs 2026', value: totalJobs, icon: Activity, color: '#073674', sub: 'All service lines' },
     { label: 'Successful Jobs', value: totalSuccessful, icon: CheckCircle2, color: '#059669', sub: `${totalJobs > 0 ? ((totalSuccessful/totalJobs)*100).toFixed(0) : 0}% success rate` },
-    { label: 'Total Production Recovery After Job', value: `${totalRecoveryAfter >= 0 ? '+' : ''}${totalRecoveryAfter.toLocaleString()}`, icon: TrendingUp, color: totalRecoveryAfter >= 0 ? '#059669' : '#dc2626', sub: 'bbl/d net gain' },
-    { label: 'Production Recovery at +30 Days', value: `${totalRecovery30 >= 0 ? '+' : ''}${totalRecovery30.toLocaleString()}`, icon: TrendingUp, color: totalRecovery30 >= 0 ? '#059669' : '#dc2626', sub: 'bbl/d at 30 days' },
   ];
 
   return (
@@ -392,8 +395,8 @@ export default function OverviewTab() {
         monthLabel={now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
       />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* KPI Cards — top row */}
+      <div className="grid grid-cols-2 gap-4">
         {kpis.map((kpi, i) => (
           <motion.div
             key={kpi.label}
@@ -414,6 +417,64 @@ export default function OverviewTab() {
           </motion.div>
         ))}
       </div>
+
+      {/* Production Recovery — CT row */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+        <Card className="border-0 shadow-sm bg-white">
+          <CardContent className="pt-4 pb-4 px-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#073674] mb-3 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#073674]" />
+              Coiled Tubing — Production Recovery
+              <span className="ml-auto text-slate-400 font-normal normal-case tracking-normal">{ctRecovery.count} job{ctRecovery.count !== 1 ? 's' : ''}</span>
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Recovery After Job</p>
+                <p className={`text-2xl font-bold font-mono ${ctRecovery.after >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {ctRecovery.after >= 0 ? '+' : ''}{ctRecovery.after.toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-400">bbl/d</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Recovery at +30 Days</p>
+                <p className={`text-2xl font-bold font-mono ${ctRecovery.days30 >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {ctRecovery.days30 >= 0 ? '+' : ''}{ctRecovery.days30.toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-400">bbl/d</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Production Recovery — WL row */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
+        <Card className="border-0 shadow-sm bg-white">
+          <CardContent className="pt-4 pb-4 px-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#0d6efd] mb-3 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#0d6efd]" />
+              Wireline — Production Recovery
+              <span className="ml-auto text-slate-400 font-normal normal-case tracking-normal">{wlRecovery.count} job{wlRecovery.count !== 1 ? 's' : ''}</span>
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Recovery After Job</p>
+                <p className={`text-2xl font-bold font-mono ${wlRecovery.after >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {wlRecovery.after >= 0 ? '+' : ''}{wlRecovery.after.toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-400">bbl/d</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Recovery at +30 Days</p>
+                <p className={`text-2xl font-bold font-mono ${wlRecovery.days30 >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {wlRecovery.days30 >= 0 ? '+' : ''}{wlRecovery.days30.toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-400">bbl/d</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Status Summary Row */}
       <div className="grid grid-cols-3 gap-4">

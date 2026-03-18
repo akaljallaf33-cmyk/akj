@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight, Clock, Filter, Bell, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight, Clock, Filter, Bell, ChevronDown, ChevronUp, Search, MessageSquare, X } from 'lucide-react';
 import { WellJob, ServiceLine, SERVICE_LINE_LABELS, MONTHS_2026 } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { useRole } from '@/hooks/useRole';
@@ -102,6 +102,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [alertExpanded, setAlertExpanded] = useState(false);
+  const [wellSearch, setWellSearch] = useState('');
 
   // Jobs that ended 30+ days ago but still have no +30 Days production entry
   const pending30Jobs = useMemo(() => {
@@ -128,9 +129,17 @@ export default function ServiceLineTab({ serviceLine }: Props) {
 
   // Filtered jobs for chart and table
   const filteredJobs = useMemo(() => {
-    if (platformFilter === 'all') return jobs;
-    return jobs.filter(j => j.platform === platformFilter);
-  }, [jobs, platformFilter]);
+    let result = platformFilter === 'all' ? jobs : jobs.filter(j => j.platform === platformFilter);
+    if (wellSearch.trim()) {
+      const q = wellSearch.trim().toLowerCase();
+      result = result.filter(j =>
+        j.wellNumber.toLowerCase().includes(q) ||
+        j.platform.toLowerCase().includes(q) ||
+        j.jobType.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [jobs, platformFilter, wellSearch]);
 
   // KPI summary — always across ALL jobs (not filtered)
   const totalJobs = jobs.length;
@@ -415,7 +424,26 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                 {filteredJobs.length}{platformFilter !== 'all' ? ` / ${totalJobs}` : ''} {filteredJobs.length === 1 ? 'job' : 'jobs'}
               </span>
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Well search box */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search well, platform…"
+                  value={wellSearch}
+                  onChange={e => setWellSearch(e.target.value)}
+                  className="h-8 pl-8 pr-7 text-xs rounded-md border border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#073674]/30 w-44"
+                />
+                {wellSearch && (
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    onClick={() => setWellSearch('')}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
               {/* Platform filter for table */}
               {availablePlatforms.length > 1 && (
                 <Select value={platformFilter} onValueChange={setPlatformFilter}>
@@ -485,6 +513,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">After (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">+30 Days (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Production Recovery</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 w-8"></TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
                     {serviceLine === 'wireline' && (
                       <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Payback</TableHead>
@@ -528,6 +557,19 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                         <TableCell className="text-right"><NumCell val={job.productionAfter} /></TableCell>
                         <TableCell className="text-right"><NumCell val={job.production30Days} /></TableCell>
                         <TableCell><ProductionRecoveryCell before={job.productionBefore} after={job.productionAfter} /></TableCell>
+                        <TableCell className="text-center">
+                          {job.notes ? (
+                            <div className="relative group inline-block">
+                              <MessageSquare className="w-4 h-4 text-slate-400 hover:text-[#073674] cursor-default" />
+                              <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 leading-relaxed">
+                                {job.notes}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-200">—</span>
+                          )}
+                        </TableCell>
                         <TableCell><StatusBadge status={job.status} /></TableCell>
                         {serviceLine === 'wireline' && (() => {
                           const payback = calcWLPayback(job, oilPrice);

@@ -10,6 +10,7 @@ import ServiceLineTab from '@/components/ServiceLineTab';
 import Finance from '@/pages/Finance';
 import WellHistoryTab from '@/pages/WellHistoryTab';
 import { ServiceLine } from '@/lib/types';
+import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
 import { clearWiToken } from '@/components/AuthGuard';
 
@@ -27,6 +28,9 @@ const LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030863467/P8RX3
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const { getJobsByServiceLine } = useData();
+  const ctCount = getJobsByServiceLine('coiled-tubing').length;
+  const wlCount = getJobsByServiceLine('wireline').length;
 
   const handleSignOut = () => {
     clearWiToken();
@@ -100,6 +104,16 @@ export default function Dashboard() {
                 >
                   <tab.icon className="w-4 h-4" />
                   <span>{tab.label}</span>
+                  {tab.id === 'coiled-tubing' && ctCount > 0 && (
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full leading-none ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-[#073674]/10 text-[#073674]'
+                    }`}>{ctCount}</span>
+                  )}
+                  {tab.id === 'wireline' && wlCount > 0 && (
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full leading-none ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-[#0d6efd]/10 text-[#0d6efd]'
+                    }`}>{wlCount}</span>
+                  )}
                   {isActive && (
                     <motion.span
                       layoutId="tab-indicator"

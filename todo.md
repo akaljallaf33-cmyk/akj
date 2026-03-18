@@ -68,3 +68,6 @@
 - [ ] Job Notes / Lessons Learned Feed: filterable notes feed across all jobs
 - [ ] YTD vs Annual Target tracker: progress bar per service line vs 2026 plan
 - [x] Add Pending +30 Days alert badge on CT and WL tabs for jobs ended 30+ days ago with no +30 Days production entry
+- [x] Notes tooltip icon in job table rows (hover to read note without opening edit form)
+- [x] Job count badges on CT and WL tab labels in Dashboard navigation
+- [x] Well search box on CT and WL tabs to filter table by well number

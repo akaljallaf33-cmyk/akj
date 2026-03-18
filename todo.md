@@ -74,3 +74,5 @@
 - [x] Multi-year selector in header: tap year to switch between 2026/2027/2028 etc, all data filters by selected year, no data loss
 - [x] Well Planning tracker in Well History tab: add upcoming wells with expected recovery, auto-link to actual CT/WL jobs when added
 - [x] Add "Expected Recovery This Month" stat below the This Month card on Overview, sourced from upcoming well plans for current month
+- [x] Keep all planned wells in the Overview expected strip (show total expected including completed, not just pending)
+- [x] Add monthly Expected vs Actual recovery bar chart to Well History tab (all 12 months side by side)

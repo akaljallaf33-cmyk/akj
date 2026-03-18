@@ -361,19 +361,14 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
     return sum;
   }, 0);
 
-  // Expected recovery this month from upcoming well plans (only pending ones — not yet matched to an actual job)
+  // Expected recovery this month from ALL planned wells (including completed ones — stays visible)
+  const expectedThisMonthPlans = useMemo(() => {
+    return wellPlans.filter(p => p.plannedDate && p.plannedDate.startsWith(thisMonth));
+  }, [wellPlans, thisMonth]);
+
   const expectedThisMonth = useMemo(() => {
-    return wellPlans
-      .filter(p => {
-        if (!p.plannedDate || !p.plannedDate.startsWith(thisMonth)) return false;
-        // A plan is "done" if there is an actual job for the same platform + well in the same year
-        const isMatched = jobs.some(
-          j => j.platform === p.platform && j.wellNumber === p.wellNumber
-        );
-        return !isMatched;
-      })
-      .reduce((sum, p) => sum + (p.expectedRecovery ?? 0), 0);
-  }, [wellPlans, jobs, thisMonth]);
+    return expectedThisMonthPlans.reduce((sum, p) => sum + (p.expectedRecovery ?? 0), 0);
+  }, [expectedThisMonthPlans]);
 
   const kpis = [
     { label: 'Total Jobs 2026', value: totalJobs, icon: Activity, color: '#073674', sub: 'All service lines' },

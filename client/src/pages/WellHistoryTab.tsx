@@ -4,9 +4,12 @@ import { useData } from '@/contexts/DataContext';
 import { PLATFORM_WELLS, PLATFORM_NAMES, getWellsForPlatform } from '@/lib/platformWells';
 import { SERVICE_LINE_LABELS, WellJob } from '@/lib/types';
 import WellPlanningSection from '@/components/WellPlanningSection';
+import { trpc } from '@/lib/trpc';
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -22,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, History, TrendingUp, TrendingDown, Minus, CalendarClock } from 'lucide-react';
+import { Search, History, TrendingUp, TrendingDown, Minus, CalendarClock, BarChart2 } from 'lucide-react';
 
 function statusColor(status: WellJob['status']) {
   if (status === 'Successful') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
@@ -98,6 +101,37 @@ export default function WellHistoryTab({ selectedYear }: { selectedYear?: number
 
   const hasChart = chartData.some(d => d.before !== null || d.after !== null);
 
+  // Fetch well plans for the monthly Expected vs Actual chart
+  const { data: wellPlans = [] } = trpc.wellPlans.list.useQuery({ year });
+
+  const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Monthly Expected vs Actual comparison data
+  const monthlyComparisonData = useMemo(() => {
+    return MONTH_LABELS.map((label, idx) => {
+      const monthStr = `${year}-${String(idx + 1).padStart(2, '0')}`;
+
+      // Expected: sum of expectedRecovery from plans whose plannedDate is in this month
+      const expected = wellPlans
+        .filter(p => p.plannedDate && p.plannedDate.startsWith(monthStr))
+        .reduce((sum, p) => sum + (p.expectedRecovery ?? 0), 0);
+
+      // Actual: sum of (after - before) from jobs whose endDate is in this month
+      const actual = jobs
+        .filter(j => j.endDate.startsWith(monthStr))
+        .reduce((sum, j) => {
+          if (j.productionBefore !== null && j.productionAfter !== null) {
+            return sum + (j.productionAfter - j.productionBefore);
+          }
+          return sum;
+        }, 0);
+
+      return { month: label, expected: expected || null, actual: actual || null };
+    });
+  }, [wellPlans, jobs, year]);
+
+  const hasMonthlyData = monthlyComparisonData.some(d => d.expected !== null || d.actual !== null);
+
   const handlePlatformChange = (val: string) => {
     setSelectedPlatform(val);
     setSelectedWell('');
@@ -116,6 +150,44 @@ export default function WellHistoryTab({ selectedYear }: { selectedYear?: number
     <div className="space-y-6">
       {/* Well Planning Section */}
       <WellPlanningSection selectedYear={year} />
+
+      {/* Monthly Expected vs Actual Recovery Chart */}
+      {hasMonthlyData && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <BarChart2 className="w-4 h-4 text-[#073674]" />
+            <p className="text-xs font-bold uppercase tracking-wider text-[#073674]">
+              Monthly Expected vs Actual Recovery (bbl/d)
+            </p>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">
+            Expected from planned wells · Actual from completed jobs
+          </p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={monthlyComparisonData} barGap={3} margin={{ left: -10, right: 8, top: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+                interval={0}
+              />
+              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
+                formatter={(val: any, name: string) => [
+                  val != null ? `${Number(val) >= 0 ? '+' : ''}${Number(val).toLocaleString()} bbl/d` : '—',
+                  name,
+                ]}
+              />
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              <Bar dataKey="expected" name="Expected" fill="#cbd5e1" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="actual" name="Actual" fill="#073674" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Selector Card — Well History */}
       <div className="flex items-center gap-2 pt-2">

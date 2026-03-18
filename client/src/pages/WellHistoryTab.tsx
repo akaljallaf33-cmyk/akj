@@ -35,8 +35,10 @@ function statusDot(status: WellJob['status']) {
   return 'bg-red-500';
 }
 
-export default function WellHistoryTab() {
-  const { jobs } = useData();
+export default function WellHistoryTab({ selectedYear }: { selectedYear?: number }) {
+  const { jobs: allJobs } = useData();
+  const year = selectedYear ?? new Date().getFullYear();
+  const jobs = allJobs.filter(j => j.startDate.startsWith(String(year)));
   const [selectedPlatform, setSelectedPlatform] = useState<string>('');
   const [selectedWell, setSelectedWell] = useState<string>('');
 

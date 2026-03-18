@@ -28,6 +28,7 @@ import {
 
 interface Props {
   serviceLine: ServiceLine;
+  selectedYear?: number;
 }
 
 function StatusBadge({ status }: { status: WellJob['status'] }) {
@@ -91,9 +92,11 @@ function calcWLPayback(job: WellJob, oilPrice: number): number | null {
   return Math.ceil(job.jobBill / dailyRevenue);
 }
 
-export default function ServiceLineTab({ serviceLine }: Props) {
+export default function ServiceLineTab({ serviceLine, selectedYear }: Props) {
   const { getJobsByServiceLine, deleteJob } = useData();
-  const jobs = getJobsByServiceLine(serviceLine);
+  const allJobs = getJobsByServiceLine(serviceLine);
+  const year = selectedYear ?? new Date().getFullYear();
+  const jobs = allJobs.filter(j => j.startDate.startsWith(String(year)));
   const { isAdmin } = useRole();
   const oilPrice = getStoredOilPrice();
 

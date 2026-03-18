@@ -713,7 +713,7 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
 
 // ─── Main Finance Page ────────────────────────────────────────────────────────
 
-export default function Finance() {
+export default function Finance({ selectedYear }: { selectedYear?: number }) {
   const [monthlyDeclineRate, setMonthlyDeclineRate] = useState(0.02); // default 2%/month
 
   return (

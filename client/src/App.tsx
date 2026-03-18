@@ -3,15 +3,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { DataProvider } from "./contexts/DataContext";
-import AuthGuard from "./components/AuthGuard";
+import { DataProvider } from './contexts/DataContext';
+import { YearProvider } from './contexts/YearContext';
+import AuthGuard from './components/AuthGuard';
 import Dashboard from "./pages/Dashboard";
 
 function ProtectedDashboard() {
   return (
     <AuthGuard>
       <DataProvider>
-        <Dashboard />
+        <YearProvider>
+          <Dashboard />
+        </YearProvider>
       </DataProvider>
     </AuthGuard>
   );

@@ -323,8 +323,10 @@ function ThisMonthJobsDialog({ open, onClose, jobs, monthLabel }: {
   );
 }
 
-export default function OverviewTab() {
-  const { jobs } = useData();
+export default function OverviewTab({ selectedYear }: { selectedYear?: number }) {
+  const { jobs: allJobs } = useData();
+  const year = selectedYear ?? new Date().getFullYear();
+  const jobs = allJobs.filter(j => j.startDate.startsWith(String(year)));
   const [showThisMonthJobs, setShowThisMonthJobs] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'Failed' | 'Partially Successful' | null>(null);
   const totalJobs = jobs.length;

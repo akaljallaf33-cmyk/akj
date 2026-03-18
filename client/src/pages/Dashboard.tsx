@@ -4,13 +4,14 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Layers, Radio, LogOut, DollarSign, BookOpen } from 'lucide-react';
+import { Activity, Layers, Radio, LogOut, DollarSign, BookOpen, ChevronDown } from 'lucide-react';
 import OverviewTab from '@/components/OverviewTab';
 import ServiceLineTab from '@/components/ServiceLineTab';
 import Finance from '@/pages/Finance';
 import WellHistoryTab from '@/pages/WellHistoryTab';
 import { ServiceLine } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
+import { useYear } from '@/contexts/YearContext';
 import { toast } from 'sonner';
 import { clearWiToken } from '@/components/AuthGuard';
 
@@ -28,9 +29,13 @@ const LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030863467/P8RX3
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
   const { getJobsByServiceLine } = useData();
-  const ctCount = getJobsByServiceLine('coiled-tubing').length;
-  const wlCount = getJobsByServiceLine('wireline').length;
+  const { selectedYear, setSelectedYear, availableYears } = useYear();
+
+  // Job counts filtered by selected year
+  const ctCount = getJobsByServiceLine('coiled-tubing').filter(j => j.startDate.startsWith(String(selectedYear))).length;
+  const wlCount = getJobsByServiceLine('wireline').filter(j => j.startDate.startsWith(String(selectedYear))).length;
 
   const handleSignOut = () => {
     clearWiToken();
@@ -62,13 +67,42 @@ export default function Dashboard() {
                 <h1 className="text-white font-bold text-base leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Well Intervention Dashboard
                 </h1>
-                <p className="text-blue-200 text-xs font-medium tracking-wide">2026 Annual Forecast & Performance</p>
+                {/* Year selector — tap to switch year */}
+                <div className="relative">
+                  <button
+                    onClick={() => setYearDropdownOpen(v => !v)}
+                    className="flex items-center gap-1 text-blue-200 hover:text-white text-xs font-medium tracking-wide transition-colors group"
+                  >
+                    <span>{selectedYear} Annual Forecast & Performance</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${yearDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {yearDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-xl border border-slate-100 overflow-hidden z-50 min-w-[160px]">
+                      {availableYears.map(year => (
+                        <button
+                          key={year}
+                          onClick={() => { setSelectedYear(year); setYearDropdownOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors ${
+                            year === selectedYear
+                              ? 'bg-[#073674] text-white'
+                              : 'text-slate-700 hover:bg-blue-50'
+                          }`}
+                        >
+                          FY {year}
+                          {year === new Date().getFullYear() && year !== selectedYear && (
+                            <span className="ml-2 text-xs text-emerald-500 font-normal">current</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             {/* Year badge + Logout */}
             <div className="flex items-center gap-3">
               <span className="hidden md:inline bg-white/10 text-white text-xs font-bold px-3 py-1.5 rounded-full tracking-widest uppercase">
-                FY 2026
+                FY {selectedYear}
               </span>
               <button
                 onClick={handleSignOut}
@@ -163,11 +197,11 @@ export default function Dashboard() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'overview' && <OverviewTab />}
-            {activeTab === 'coiled-tubing' && <ServiceLineTab serviceLine="coiled-tubing" />}
-            {activeTab === 'wireline' && <ServiceLineTab serviceLine="wireline" />}
-            {activeTab === 'finance' && <Finance />}
-            {activeTab === 'well-history' && <WellHistoryTab />}
+            {activeTab === 'overview' && <OverviewTab selectedYear={selectedYear} />}
+            {activeTab === 'coiled-tubing' && <ServiceLineTab serviceLine="coiled-tubing" selectedYear={selectedYear} />}
+            {activeTab === 'wireline' && <ServiceLineTab serviceLine="wireline" selectedYear={selectedYear} />}
+            {activeTab === 'finance' && <Finance selectedYear={selectedYear} />}
+            {activeTab === 'well-history' && <WellHistoryTab selectedYear={selectedYear} />}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -175,7 +209,7 @@ export default function Dashboard() {
       {/* ── Footer ── */}
       <footer className="bg-[#073674] mt-auto">
         <div className="container py-3 flex items-center justify-between">
-          <p className="text-blue-200 text-xs">© 2026 Dragon Oil — Well Intervention Department</p>
+          <p className="text-blue-200 text-xs">© {selectedYear} Dragon Oil — Well Intervention Department</p>
           <p className="text-blue-300 text-xs">Confidential — For Internal Use Only</p>
         </div>
       </footer>

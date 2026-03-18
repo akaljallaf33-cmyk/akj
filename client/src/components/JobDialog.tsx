@@ -9,8 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { WellJob, ServiceLine, JOB_TYPES, SERVICE_LINE_LABELS } from '@/lib/types';
+import { PLATFORM_NAMES, getWellsForPlatform } from '@/lib/platformWells';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface JobDialogProps {
   open: boolean;
@@ -47,6 +52,8 @@ const defaultForm = (sl: ServiceLine): Omit<WellJob, 'id'> => ({
 export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDialogProps) {
   const { addJob, updateJob } = useData();
   const [form, setForm] = useState<Omit<WellJob, 'id'>>(defaultForm(serviceLine));
+  const [platformOpen, setPlatformOpen] = useState(false);
+  const [wellOpen, setWellOpen] = useState(false);
 
   useEffect(() => {
     if (editJob) {
@@ -124,28 +131,88 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4 py-2">
-          {/* Platform */}
+          {/* Platform — searchable dropdown */}
           <div className="space-y-1.5">
-            <Label htmlFor="platform" className="text-sm font-semibold text-slate-700">Platform *</Label>
-            <Input
-              id="platform"
-              placeholder="e.g. Platform A"
-              value={form.platform}
-              onChange={e => set('platform', e.target.value)}
-              className="border-slate-300 focus:border-[#073674]"
-            />
+            <Label className="text-sm font-semibold text-slate-700">Platform *</Label>
+            <Popover open={platformOpen} onOpenChange={setPlatformOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={platformOpen}
+                  className="w-full justify-between border-slate-300 font-normal text-sm bg-white hover:bg-slate-50"
+                >
+                  {form.platform || <span className="text-slate-400">Select platform…</span>}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search platform…" className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>No platform found.</CommandEmpty>
+                    <CommandGroup>
+                      {PLATFORM_NAMES.map(p => (
+                        <CommandItem
+                          key={p}
+                          value={p}
+                          onSelect={() => {
+                            set('platform', p);
+                            set('wellNumber', '');
+                            setPlatformOpen(false);
+                          }}
+                        >
+                          <Check className={cn('mr-2 h-4 w-4', form.platform === p ? 'opacity-100' : 'opacity-0')} />
+                          {p}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
-          {/* Well Number */}
+          {/* Well Number — filtered by platform */}
           <div className="space-y-1.5">
-            <Label htmlFor="wellNumber" className="text-sm font-semibold text-slate-700">Well Number *</Label>
-            <Input
-              id="wellNumber"
-              placeholder="e.g. A-01"
-              value={form.wellNumber}
-              onChange={e => set('wellNumber', e.target.value)}
-              className="border-slate-300 focus:border-[#073674]"
-            />
+            <Label className="text-sm font-semibold text-slate-700">Well Number *</Label>
+            <Popover open={wellOpen} onOpenChange={v => { if (form.platform) setWellOpen(v); }}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={wellOpen}
+                  disabled={!form.platform}
+                  className="w-full justify-between border-slate-300 font-normal text-sm bg-white hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {form.wellNumber || <span className="text-slate-400">{form.platform ? 'Select well…' : 'Select platform first'}</span>}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search well…" className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>No well found.</CommandEmpty>
+                    <CommandGroup>
+                      {getWellsForPlatform(form.platform).map(w => (
+                        <CommandItem
+                          key={w}
+                          value={w}
+                          onSelect={() => {
+                            set('wellNumber', w);
+                            setWellOpen(false);
+                          }}
+                        >
+                          <Check className={cn('mr-2 h-4 w-4', form.wellNumber === w ? 'opacity-100' : 'opacity-0')} />
+                          {w}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Unit — only for Coiled Tubing */}

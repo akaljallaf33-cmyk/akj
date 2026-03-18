@@ -43,3 +43,5 @@
 - [x] Remove Pumping tab and all pumping references from the dashboard
 - [x] Add job bill cost field to Wireline job form
 - [x] Add Payback Days column to Wireline job table
+- [x] Create platform-wells data file with all 18 platforms and their wells
+- [x] Replace free-text Platform and Well Number fields with cascading dropdowns in JobDialog

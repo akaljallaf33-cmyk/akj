@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, AlertCircle, Clock, ChevronDown, ChevronUp, Info, Timer } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, AlertCircle, Clock, ChevronDown, ChevronUp, Info, Timer } from 'lucide-react';
 import { MONTHS_2026 } from '@/lib/types';
 import { useRole } from '@/hooks/useRole';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
@@ -470,6 +470,15 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
   const totalCostSum = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0);
   const totalRecovery = rows.reduce((s, r) => s + (r.recovery ?? 0), 0);
 
+  // Total production loss from jobs with negative recovery (failed/partial)
+  const lossRows = rows.filter(r => r.recovery != null && r.recovery < 0);
+  const totalLossBbl = lossRows.reduce((s, r) => s + (r.recovery ?? 0), 0);
+  const totalLossUSD = lossRows.reduce((r, row) => {
+    const oilPrice = row.oilPrice;
+    if (!oilPrice || row.recovery == null) return r;
+    return r + row.recovery * oilPrice * daysUntilYearEnd(row.job.endDate);
+  }, 0);
+
   const totalFlatROIValue = (() => {
     let total = 0;
     rows.forEach(row => {
@@ -521,7 +530,7 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
       <MonthlyROIChart jobs={ctJobs} oilPriceMap={oilPriceMap} monthlyDeclineRate={monthlyDeclineRate} />
 
       {/* KPI Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Card className="border-0 shadow-sm bg-white">
           <CardContent className="p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total CT Investment</p>
@@ -545,7 +554,7 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
         <Card className="border-0 shadow-sm bg-white border-l-4 border-l-amber-400">
           <CardContent className="p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-              Decline-Adj. ROI Value ({(monthlyDeclineRate * 100).toFixed(1)}%/mo)
+              Decline-Adj. ROI ({(monthlyDeclineRate * 100).toFixed(1)}%/mo)
             </p>
             <p className={`text-2xl font-bold ${totalDeclineROIValue != null ? 'text-amber-600' : 'text-slate-400'}`}>
               {totalDeclineROIValue != null ? fmtUSD(totalDeclineROIValue) : '—'}
@@ -553,6 +562,29 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Total Loss KPI — only shown when there are loss jobs */}
+      {lossRows.length > 0 && (
+        <Card className="border-0 shadow-sm bg-red-50 border border-red-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingDown className="w-4 h-4 text-red-500" />
+              <p className="text-xs font-bold uppercase tracking-wider text-red-600">Total Production Loss from Failed / Partial Jobs</p>
+              <span className="ml-auto text-xs text-red-400 font-medium">{lossRows.length} job{lossRows.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-2xl font-bold text-red-600 font-mono">{fmt(totalLossBbl)} bbl/d</p>
+                <p className="text-xs text-red-400 mt-0.5">production lost at +30 days</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-red-600 font-mono">{fmtUSD(totalLossUSD)}</p>
+                <p className="text-xs text-red-400 mt-0.5">revenue impact to 31 Dec 2026</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ROI Table */}
       <Card className="border-0 shadow-sm bg-white">
@@ -592,6 +624,7 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Platform</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Well</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Unit</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">End Date</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Rig/Jack-Up</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Job Bill</TableHead>
@@ -626,6 +659,17 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
                               {job.unit}
                             </span>
                           ) : <span className="text-slate-300 text-xs">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          {job.status === 'Successful' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">✓ OK</span>
+                          ) : job.status === 'Partially Successful' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">⚠ Partial</span>
+                          ) : job.status === 'Failed' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">✗ Failed</span>
+                          ) : (
+                            <span className="text-slate-300 text-xs">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm text-slate-500 font-mono whitespace-nowrap">
                           {new Date(job.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}

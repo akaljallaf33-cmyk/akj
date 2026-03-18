@@ -1,16 +1,18 @@
 // Well Intervention Dashboard — Overview Tab
 // Combined KPIs, monthly production impact, and charts for all service lines
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Legend, Cell
 } from 'recharts';
 import { useData } from '@/contexts/DataContext';
-import { SERVICE_LINE_LABELS, ServiceLine, MONTHS_2026 } from '@/lib/types';
-import { TrendingUp, TrendingDown, Activity, CheckCircle2, AlertCircle, XCircle, Trophy } from 'lucide-react';
+import { SERVICE_LINE_LABELS, ServiceLine, MONTHS_2026, WellJob } from '@/lib/types';
+import { TrendingUp, TrendingDown, Activity, CheckCircle2, AlertCircle, XCircle, Trophy, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 const SL_COLORS: Record<ServiceLine, string> = {
   'coiled-tubing': '#073674',
@@ -250,8 +252,73 @@ function ProductionRecoveryByServiceLine() {
   );
 }
 
+// ─── This Month Jobs Dialog ──────────────────────────────────────────────────
+function ThisMonthJobsDialog({ open, onClose, jobs, monthLabel }: {
+  open: boolean;
+  onClose: () => void;
+  jobs: WellJob[];
+  monthLabel: string;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-[#073674] text-lg font-bold">
+            {monthLabel} — {jobs.length} Job{jobs.length !== 1 ? 's' : ''}
+          </DialogTitle>
+        </DialogHeader>
+        {jobs.length === 0 ? (
+          <p className="text-slate-400 text-sm py-4 text-center">No jobs this month.</p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {jobs.map((job, idx) => {
+              const recovery = job.productionBefore !== null && job.productionAfter !== null
+                ? job.productionAfter - job.productionBefore : null;
+              const statusColor = job.status === 'Successful' ? 'bg-emerald-100 text-emerald-800'
+                : job.status === 'Partially Successful' ? 'bg-amber-100 text-amber-800'
+                : 'bg-red-100 text-red-800';
+              return (
+                <div key={job.id} className="py-3 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-[#073674]/10 text-[#073674] text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-slate-800 font-mono">{job.platform} / {job.wellNumber}</span>
+                        <span className="text-xs text-slate-500">{SERVICE_LINE_LABELS[job.serviceLine]}</span>
+                        {job.unit && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-[#073674]/10 text-[#073674] font-medium">{job.unit}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">{job.jobType}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {new Date(job.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                        {job.startDate !== job.endDate && ` → ${new Date(job.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`}
+                      </p>
+                      {recovery !== null && (
+                        <p className={`text-xs font-semibold mt-0.5 ${recovery >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {recovery >= 0 ? '+' : ''}{recovery.toLocaleString()} bbl/d recovery
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${statusColor}`}>
+                    {job.status}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function OverviewTab() {
   const { jobs } = useData();
+  const [showThisMonthJobs, setShowThisMonthJobs] = useState(false);
 
   const totalJobs = jobs.length;
   const totalSuccessful = jobs.filter(j => j.status === 'Successful').length;
@@ -285,11 +352,12 @@ export default function OverviewTab() {
 
   return (
     <div className="space-y-6">
-      {/* This Month Banner */}
+      {/* This Month Banner — clickable */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-xl px-6 py-4 flex items-center justify-between ${thisMonthRecovery >= 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}
+        onClick={() => setShowThisMonthJobs(true)}
+        className={`rounded-xl px-6 py-4 flex items-center justify-between cursor-pointer transition-all hover:shadow-md active:scale-[0.99] ${thisMonthRecovery >= 0 ? 'bg-emerald-50 border border-emerald-200 hover:border-emerald-400' : 'bg-red-50 border border-red-200 hover:border-red-400'}`}
       >
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-0.5">
@@ -297,6 +365,9 @@ export default function OverviewTab() {
           </p>
           <p className="text-sm text-slate-600">
             <span className="font-semibold">{thisMonthJobs.length}</span> intervention{thisMonthJobs.length !== 1 ? 's' : ''} performed
+          </p>
+          <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+            Tap to see details <ChevronRight className="w-3 h-3" />
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -312,6 +383,14 @@ export default function OverviewTab() {
           </div>
         </div>
       </motion.div>
+
+      {/* This Month Jobs Dialog */}
+      <ThisMonthJobsDialog
+        open={showThisMonthJobs}
+        onClose={() => setShowThisMonthJobs(false)}
+        jobs={thisMonthJobs}
+        monthLabel={now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -59,3 +59,12 @@
 - [x] Replace Well History popup with dedicated Well History tab (platform + well selector dropdowns, chronological timeline, production trend chart)
 - [x] Add platform filter dropdown to CT and WL tabs to filter the Well-by-Well chart and job table by platform
 - [x] Add Deferred Production section to Overview: total bbl/d not recovered, dollar impact to year-end, per-well breakdown
+- [ ] Unit Utilization: days active vs idle per CT/WL unit per month
+- [ ] Success Rate Trend: month-by-month success rate line chart
+- [ ] Budget vs Actual Spend: YTD gauge/progress bar vs annual budget
+- [ ] Cost per Job Type: average cost breakdown by job type
+- [ ] Upcoming Jobs Calendar: 30/60/90-day forward plan with platform, unit, responsible
+- [ ] Wells Not Intervened: planned wells not yet touched, sorted by overdue
+- [ ] Job Notes / Lessons Learned Feed: filterable notes feed across all jobs
+- [ ] YTD vs Annual Target tracker: progress bar per service line vs 2026 plan
+- [x] Add Pending +30 Days alert badge on CT and WL tabs for jobs ended 30+ days ago with no +30 Days production entry

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight, Clock, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight, Clock, Filter, Bell, ChevronDown, ChevronUp } from 'lucide-react';
 import { WellJob, ServiceLine, SERVICE_LINE_LABELS, MONTHS_2026 } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { useRole } from '@/hooks/useRole';
@@ -101,6 +101,18 @@ export default function ServiceLineTab({ serviceLine }: Props) {
   const [editJob, setEditJob] = useState<WellJob | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [platformFilter, setPlatformFilter] = useState<string>('all');
+  const [alertExpanded, setAlertExpanded] = useState(false);
+
+  // Jobs that ended 30+ days ago but still have no +30 Days production entry
+  const pending30Jobs = useMemo(() => {
+    const now = new Date();
+    return jobs.filter(j => {
+      if (j.production30Days !== null) return false; // already filled
+      const end = new Date(j.endDate);
+      const daysSinceEnd = (now.getTime() - end.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceEnd >= 30;
+    }).sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
+  }, [jobs]);
 
   const handleEdit = (job: WellJob) => { setEditJob(job); setDialogOpen(true); };
   const handleAdd = () => { setEditJob(null); setDialogOpen(true); };
@@ -160,6 +172,67 @@ export default function ServiceLineTab({ serviceLine }: Props) {
 
   return (
     <div className="space-y-6">
+
+      {/* Pending +30 Days Alert Banner */}
+      {pending30Jobs.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+            <button
+              className="w-full px-5 py-3 flex items-center justify-between gap-3 text-left"
+              onClick={() => setAlertExpanded(v => !v)}
+            >
+              <div className="flex items-center gap-2.5">
+                <Bell className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="text-sm font-semibold text-amber-800">
+                  {pending30Jobs.length} job{pending30Jobs.length !== 1 ? 's' : ''} pending +30 Days production update
+                </span>
+                <span className="bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {pending30Jobs.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-amber-600 shrink-0">
+                {alertExpanded ? <><ChevronUp className="w-4 h-4" /> Hide</> : <><ChevronDown className="w-4 h-4" /> Show wells</>}
+              </div>
+            </button>
+            <AnimatePresence>
+              {alertExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="border-t border-amber-200 divide-y divide-amber-100">
+                    {pending30Jobs.map(j => {
+                      const end = new Date(j.endDate);
+                      const daysOverdue = Math.floor((new Date().getTime() - end.getTime()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div key={j.id} className="px-5 py-2.5 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span className="font-semibold text-slate-700 text-sm">{j.platform}</span>
+                            <span className="font-mono text-sm text-slate-500">{j.wellNumber}</span>
+                            <span className="text-xs text-slate-400 truncate">{j.jobType}</span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-xs font-semibold text-amber-700">+{daysOverdue} days overdue</span>
+                            <p className="text-xs text-slate-400">ended {j.endDate}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="px-5 py-2 bg-amber-50/80 border-t border-amber-100">
+                    <p className="text-xs text-amber-600">Open each job and fill in the +30 Days production value to clear this alert.</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      )}
+
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[

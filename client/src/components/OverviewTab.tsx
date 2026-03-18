@@ -2,6 +2,7 @@
 // Combined KPIs, monthly production impact, and charts for all service lines
 
 import { useMemo, useState } from 'react';
+import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -329,6 +330,9 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
   const jobs = allJobs.filter(j => j.startDate.startsWith(String(year)));
   const [showThisMonthJobs, setShowThisMonthJobs] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'Failed' | 'Partially Successful' | null>(null);
+
+  // Fetch well plans for the current year to compute expected recovery this month
+  const { data: wellPlans = [] } = trpc.wellPlans.list.useQuery({ year });
   const totalJobs = jobs.length;
   const totalSuccessful = jobs.filter(j => j.status === 'Successful').length;
   const totalPartial = jobs.filter(j => j.status === 'Partially Successful').length;
@@ -356,6 +360,20 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
     if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
     return sum;
   }, 0);
+
+  // Expected recovery this month from upcoming well plans (only pending ones — not yet matched to an actual job)
+  const expectedThisMonth = useMemo(() => {
+    return wellPlans
+      .filter(p => {
+        if (!p.plannedDate || !p.plannedDate.startsWith(thisMonth)) return false;
+        // A plan is "done" if there is an actual job for the same platform + well in the same year
+        const isMatched = jobs.some(
+          j => j.platform === p.platform && j.wellNumber === p.wellNumber
+        );
+        return !isMatched;
+      })
+      .reduce((sum, p) => sum + (p.expectedRecovery ?? 0), 0);
+  }, [wellPlans, jobs, thisMonth]);
 
   const kpis = [
     { label: 'Total Jobs 2026', value: totalJobs, icon: Activity, color: '#073674', sub: 'All service lines' },
@@ -395,6 +413,26 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
           </div>
         </div>
       </motion.div>
+
+      {/* Expected Recovery This Month — from upcoming well plans */}
+      {expectedThisMonth > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="-mt-3 rounded-b-xl rounded-t-none border border-t-0 border-blue-200 bg-blue-50 px-6 py-3 flex items-center justify-between"
+        >
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-[#073674]" />
+            <p className="text-xs font-semibold text-[#073674]">
+              Expected to recover this month
+            </p>
+          </div>
+          <p className="text-sm font-bold font-mono text-[#073674]">
+            +{expectedThisMonth.toLocaleString()} bbl/d
+          </p>
+        </motion.div>
+      )}
 
       {/* This Month Jobs Dialog */}
       <ThisMonthJobsDialog

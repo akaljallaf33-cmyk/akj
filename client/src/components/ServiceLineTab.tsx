@@ -103,6 +103,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [alertExpanded, setAlertExpanded] = useState(false);
   const [wellSearch, setWellSearch] = useState('');
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
 
   // Jobs that ended 30+ days ago but still have no +30 Days production entry
   const pending30Jobs = useMemo(() => {
@@ -524,6 +525,7 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                 <TableBody>
                   <AnimatePresence>
                     {filteredJobs.map((job, idx) => (
+                      <>
                       <motion.tr
                         key={job.id}
                         initial={{ opacity: 0, x: -10 }}
@@ -559,13 +561,13 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                         <TableCell><ProductionRecoveryCell before={job.productionBefore} after={job.productionAfter} /></TableCell>
                         <TableCell className="text-center">
                           {job.notes ? (
-                            <div className="relative group inline-block">
-                              <MessageSquare className="w-4 h-4 text-slate-400 hover:text-[#073674] cursor-default" />
-                              <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 leading-relaxed">
-                                {job.notes}
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
-                              </div>
-                            </div>
+                            <button
+                              className={`p-1 rounded transition-colors ${expandedNoteId === job.id ? 'text-[#073674] bg-blue-50' : 'text-slate-400 hover:text-[#073674]'}`}
+                              onClick={() => setExpandedNoteId(expandedNoteId === job.id ? null : job.id)}
+                              title="Tap to read note"
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </button>
                           ) : (
                             <span className="text-slate-200">—</span>
                           )}
@@ -610,6 +612,30 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                           </TableCell>
                         )}
                       </motion.tr>
+                      {/* Expanded note row */}
+                      {expandedNoteId === job.id && job.notes && (
+                        <tr key={`note-${job.id}`} className="bg-blue-50/60">
+                          <td
+                            colSpan={20}
+                            className="px-6 py-3"
+                          >
+                            <div className="flex items-start gap-2">
+                              <MessageSquare className="w-4 h-4 text-[#073674] shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-xs font-semibold text-[#073674] mb-0.5">Note</p>
+                                <p className="text-sm text-slate-700 leading-relaxed">{job.notes}</p>
+                              </div>
+                              <button
+                                className="ml-auto text-slate-400 hover:text-slate-600 p-1"
+                                onClick={() => setExpandedNoteId(null)}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </>
                     ))}
                   </AnimatePresence>
                 </TableBody>

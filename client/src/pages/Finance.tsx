@@ -91,7 +91,6 @@ function calcFlatROI(
 ): number | null {
   if (production30Days == null || productionBefore == null || oilPrice == null || !totalCost) return null;
   const recovery = production30Days - productionBefore;
-  if (recovery <= 0) return null;
   const days = endDate ? daysUntilYearEnd(endDate) : 0;
   const periodValue = recovery * oilPrice * days;
   return periodValue;
@@ -112,7 +111,6 @@ function calcDeclineROI(
 ): number | null {
   if (production30Days == null || productionBefore == null || oilPrice == null || !totalCost || !endDate) return null;
   const recovery = production30Days - productionBefore;
-  if (recovery <= 0) return null;
 
   const stableDate = new Date(endDate);
   stableDate.setDate(stableDate.getDate() + 30);
@@ -153,9 +151,9 @@ function calcPaybackDays(
 ): number | null {
   if (production30Days == null || productionBefore == null || oilPrice == null || !totalCost) return null;
   const recovery = production30Days - productionBefore;
-  if (recovery <= 0) return null;
+  if (recovery === 0) return null; // zero recovery means infinite payback
   const dailyRevenue = recovery * oilPrice;
-  if (dailyRevenue <= 0) return null;
+  if (dailyRevenue <= 0) return null; // negative recovery = no payback possible
   return Math.ceil(totalCost / dailyRevenue);
 }
 

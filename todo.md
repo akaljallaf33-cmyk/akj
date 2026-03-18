@@ -50,3 +50,4 @@
 - [x] Split production recovery KPI cards into separate CT and WL rows on Overview page
 - [x] Split CT and WL recovery cards into 4 individual boxes (CT Recovery After, CT +30 Days, WL Recovery After, WL +30 Days)
 - [x] Make Failed and Partially Successful status cards clickable to show a popup listing those jobs
+- [x] Fix Finance page to show Payback/ROI for all jobs regardless of status when cost data exists

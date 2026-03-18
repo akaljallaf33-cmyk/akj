@@ -41,3 +41,5 @@
 - [x] Hide add/edit/delete buttons for guest users in all tabs
 - [x] Allow guest users to change the decline rate only
 - [x] Remove Pumping tab and all pumping references from the dashboard
+- [x] Add job bill cost field to Wireline job form
+- [x] Add Payback Days column to Wireline job table

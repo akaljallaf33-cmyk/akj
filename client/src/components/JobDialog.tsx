@@ -64,11 +64,16 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
   const parseNum = (v: string) => v === '' ? null : parseFloat(v);
 
   const isCT = serviceLine === 'coiled-tubing';
+  const isWL = serviceLine === 'wireline';
   const isCT1 = isCT && form.unit === 'CT-1';
   const isCT2 = isCT && form.unit === 'CT-2';
 
   // Calculate total cost for preview
   const calcTotalCost = (): number | null => {
+    if (isWL) {
+      const bill = form.jobBill ?? 0;
+      return bill > 0 ? bill : null;
+    }
     if (!isCT) return null;
     let total = 0;
     if (isCT1) {
@@ -369,8 +374,8 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
             </div>
           )}
 
-          {/* ─── Job Bill (shared for all CT jobs) ─────────────── */}
-          {isCT && (
+          {/* ─── Job Bill (CT & WL) ─────────────────────────── */}
+          {(isCT || isWL) && (
             <div className="space-y-1.5">
               <Label className="text-sm font-semibold text-slate-700">Job Bill (USD)</Label>
               <Input
@@ -379,11 +384,12 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
                 onChange={e => set('jobBill', parseNum(e.target.value))}
                 className="border-slate-300 focus:border-[#073674]"
               />
+              {isWL && <p className="text-xs text-slate-400">Total cost of the Wireline job service bill</p>}
             </div>
           )}
 
           {/* ─── Total Cost Preview ─────────────────────────────── */}
-          {isCT && totalCost !== null && (
+          {(isCT || isWL) && totalCost !== null && (
             <div className="space-y-1.5 flex items-end">
               <div className="w-full bg-[#073674] text-white rounded-xl px-4 py-3 text-center">
                 <p className="text-xs font-medium opacity-80 uppercase tracking-wide">Total Job Cost</p>

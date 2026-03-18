@@ -8,7 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Minus, ArrowUpRight, Clock } from 'lucide-react';
 import { WellJob, ServiceLine, SERVICE_LINE_LABELS } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { useRole } from '@/hooks/useRole';
@@ -63,10 +63,39 @@ function NumCell({ val }: { val: number | null }) {
   return <span className="font-mono text-sm text-slate-800">{val.toLocaleString()}</span>;
 }
 
+// Read oil price from localStorage (shared with Finance page)
+function getStoredOilPrice(): number {
+  try {
+    const stored = localStorage.getItem('wi_oil_prices');
+    if (!stored) return 75;
+    const prices: Record<string, number> = JSON.parse(stored);
+    // Use the most recent month's price as a proxy for payback calculation
+    const keys = Object.keys(prices).sort().reverse();
+    for (const k of keys) {
+      if (prices[k] > 0) return prices[k];
+    }
+    return 75;
+  } catch { return 75; }
+}
+
+function calcWLPayback(job: WellJob, oilPrice: number): number | null {
+  if (!job.jobBill || job.jobBill <= 0) return null;
+  const recovery = job.production30Days !== null && job.productionBefore !== null
+    ? job.production30Days - job.productionBefore
+    : job.productionAfter !== null && job.productionBefore !== null
+    ? job.productionAfter - job.productionBefore
+    : null;
+  if (recovery === null || recovery <= 0) return null;
+  const dailyRevenue = recovery * oilPrice;
+  if (dailyRevenue <= 0) return null;
+  return Math.ceil(job.jobBill / dailyRevenue);
+}
+
 export default function ServiceLineTab({ serviceLine }: Props) {
   const { getJobsByServiceLine, deleteJob } = useData();
   const jobs = getJobsByServiceLine(serviceLine);
   const { isAdmin } = useRole();
+  const oilPrice = getStoredOilPrice();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editJob, setEditJob] = useState<WellJob | null>(null);
@@ -301,8 +330,11 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">After (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">+30 Days (bbl/d)</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Production Recovery</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
-                    {isAdmin && <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</TableHead>}
+                     <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
+                     {serviceLine === 'wireline' && (
+                       <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Payback</TableHead>
+                     )}
+                     {isAdmin && <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -342,6 +374,24 @@ export default function ServiceLineTab({ serviceLine }: Props) {
                         <TableCell className="text-right"><NumCell val={job.production30Days} /></TableCell>
                         <TableCell><ProductionRecoveryCell before={job.productionBefore} after={job.productionAfter} /></TableCell>
                         <TableCell><StatusBadge status={job.status} /></TableCell>
+                        {serviceLine === 'wireline' && (() => {
+                          const payback = calcWLPayback(job, oilPrice);
+                          return (
+                            <TableCell className="text-right">
+                              {payback === null ? (
+                                <span className="text-slate-400 text-xs">—</span>
+                              ) : (
+                                <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
+                                  payback <= 30 ? 'bg-emerald-100 text-emerald-700' :
+                                  payback <= 90 ? 'bg-amber-100 text-amber-700' :
+                                  'bg-orange-100 text-orange-700'
+                                }`}>
+                                  <Clock className="w-3 h-3" />{payback}d
+                                </span>
+                              )}
+                            </TableCell>
+                          );
+                        })()}
                         {isAdmin && (
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">

@@ -56,3 +56,4 @@
 - [x] Show job notes in the Failed/Partially Successful popup on Overview page
 - [x] Create WellHistoryDialog component with job timeline and production trend chart
 - [x] Wire WellHistoryDialog to Overview leaderboard and CT/WL job tables
+- [x] Replace Well History popup with dedicated Well History tab (platform + well selector dropdowns, chronological timeline, production trend chart)

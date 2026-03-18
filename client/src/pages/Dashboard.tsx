@@ -4,21 +4,23 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Layers, Radio, LogOut, DollarSign } from 'lucide-react';
+import { Activity, Layers, Radio, LogOut, DollarSign, BookOpen } from 'lucide-react';
 import OverviewTab from '@/components/OverviewTab';
 import ServiceLineTab from '@/components/ServiceLineTab';
 import Finance from '@/pages/Finance';
+import WellHistoryTab from '@/pages/WellHistoryTab';
 import { ServiceLine } from '@/lib/types';
 import { toast } from 'sonner';
 import { clearWiToken } from '@/components/AuthGuard';
 
-type Tab = 'overview' | ServiceLine | 'finance';
+type Tab = 'overview' | ServiceLine | 'finance' | 'well-history';
 
 const TABS: { id: Tab; label: string; icon: React.ElementType; color: string }[] = [
   { id: 'overview',       label: 'Overview',      icon: Activity,    color: '#073674' },
   { id: 'coiled-tubing',  label: 'Coiled Tubing', icon: Layers,      color: '#073674' },
   { id: 'wireline',       label: 'Wireline',      icon: Radio,       color: '#0d6efd' },
   { id: 'finance',        label: 'Finance & ROI',  icon: DollarSign,  color: '#059669' },
+  { id: 'well-history',   label: 'Well History',   icon: BookOpen,    color: '#7c3aed' },
 ];
 
 const LOGO_URL = 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030863467/P8RX3svmXia4vbzjKeD7oZ/dragon-oil-logo-white_d772dc57.png';
@@ -128,6 +130,8 @@ export default function Dashboard() {
                   ? 'Full year summary across all service lines'
                   : activeTab === 'finance'
                   ? 'Job costs, investment tracking, and ROI calculations for CT operations'
+                  : activeTab === 'well-history'
+                  ? 'Select a platform and well to view all interventions in chronological order'
                   : `${activeTabDef.label} interventions — well-by-well production tracking`}
               </p>
             </div>
@@ -149,6 +153,7 @@ export default function Dashboard() {
             {activeTab === 'coiled-tubing' && <ServiceLineTab serviceLine="coiled-tubing" />}
             {activeTab === 'wireline' && <ServiceLineTab serviceLine="wireline" />}
             {activeTab === 'finance' && <Finance />}
+            {activeTab === 'well-history' && <WellHistoryTab />}
           </motion.div>
         </AnimatePresence>
       </main>

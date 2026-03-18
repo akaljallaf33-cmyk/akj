@@ -72,3 +72,4 @@
 - [x] Job count badges on CT and WL tab labels in Dashboard navigation
 - [x] Well search box on CT and WL tabs to filter table by well number
 - [x] Multi-year selector in header: tap year to switch between 2026/2027/2028 etc, all data filters by selected year, no data loss
+- [x] Well Planning tracker in Well History tab: add upcoming wells with expected recovery, auto-link to actual CT/WL jobs when added

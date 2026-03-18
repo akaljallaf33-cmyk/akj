@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { PLATFORM_WELLS, PLATFORM_NAMES, getWellsForPlatform } from '@/lib/platformWells';
 import { SERVICE_LINE_LABELS, WellJob } from '@/lib/types';
+import WellPlanningSection from '@/components/WellPlanningSection';
 import {
   LineChart,
   Line,
@@ -21,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, History, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Search, History, TrendingUp, TrendingDown, Minus, CalendarClock } from 'lucide-react';
 
 function statusColor(status: WellJob['status']) {
   if (status === 'Successful') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
@@ -113,6 +114,15 @@ export default function WellHistoryTab({ selectedYear }: { selectedYear?: number
 
   return (
     <div className="space-y-6">
+      {/* Well Planning Section */}
+      <WellPlanningSection selectedYear={year} />
+
+      {/* Selector Card — Well History */}
+      <div className="flex items-center gap-2 pt-2">
+        <History className="w-4 h-4 text-slate-400" />
+        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Intervention History</h3>
+      </div>
+
       {/* Selector Card */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
         <div className="flex items-center gap-2 mb-4">

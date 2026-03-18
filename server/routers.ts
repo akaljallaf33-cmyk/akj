@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
-import { createWellJob, deleteWellJob, getAllJobFinance, getAllOilPrices, getAllWellJobs, upsertJobFinance, upsertOilPrice, updateWellJob } from "./db";
+import { createWellJob, deleteWellJob, getAllJobFinance, getAllOilPrices, getAllWellJobs, upsertJobFinance, upsertOilPrice, updateWellJob, getAllWellPlans, createWellPlan, updateWellPlan, deleteWellPlan } from "./db";
 import { ENV } from "./_core/env";
 import { SignJWT } from "jose";
 
@@ -142,6 +142,52 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int() }))
       .mutation(async ({ input }) => {
         return deleteWellJob(input.id);
+      }),
+  }),
+
+  // Well Plans: upcoming wells with expected recovery targets
+  wellPlans: router({
+    list: publicProcedure
+      .input(z.object({ year: z.number().int().optional() }))
+      .query(async ({ input }) => {
+        return getAllWellPlans(input.year);
+      }),
+
+    create: publicProcedure
+      .input(z.object({
+        year: z.number().int(),
+        platform: z.string().min(1),
+        wellNumber: z.string().min(1),
+        serviceLine: z.enum(['coiled-tubing', 'wireline', 'pumping']),
+        plannedJobType: z.string().optional(),
+        expectedRecovery: z.number().int().nullable().optional(),
+        plannedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return createWellPlan(input);
+      }),
+
+    update: publicProcedure
+      .input(z.object({
+        id: z.number().int(),
+        platform: z.string().min(1).optional(),
+        wellNumber: z.string().min(1).optional(),
+        serviceLine: z.enum(['coiled-tubing', 'wireline', 'pumping']).optional(),
+        plannedJobType: z.string().optional(),
+        expectedRecovery: z.number().int().nullable().optional(),
+        plannedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        return updateWellPlan(id, data);
+      }),
+
+    delete: publicProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(async ({ input }) => {
+        return deleteWellPlan(input.id);
       }),
   }),
 

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertJobFinance, InsertOilPrice, InsertUser, InsertWellJob, jobFinance, oilPrices, users, wellJobs } from "../drizzle/schema";
+import { InsertJobFinance, InsertOilPrice, InsertUser, InsertWellJob, InsertWellPlan, jobFinance, oilPrices, users, wellJobs, wellPlans } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -177,4 +177,39 @@ export async function upsertOilPrice(data: InsertOilPrice) {
   });
   const rows = await db.select().from(oilPrices).where(eq(oilPrices.month, data.month)).limit(1);
   return rows[0];
+}
+
+// ─── Well Plans ───────────────────────────────────────────────────────────────
+
+export async function getAllWellPlans(year?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (year !== undefined) {
+    return db.select().from(wellPlans).where(eq(wellPlans.year, year)).orderBy(wellPlans.plannedDate);
+  }
+  return db.select().from(wellPlans).orderBy(wellPlans.plannedDate);
+}
+
+export async function createWellPlan(data: InsertWellPlan) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const result = await db.insert(wellPlans).values(data);
+  const insertId = (result[0] as { insertId: number }).insertId;
+  const rows = await db.select().from(wellPlans).where(eq(wellPlans.id, insertId)).limit(1);
+  return rows[0];
+}
+
+export async function updateWellPlan(id: number, data: Partial<InsertWellPlan>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(wellPlans).set(data).where(eq(wellPlans.id, id));
+  const rows = await db.select().from(wellPlans).where(eq(wellPlans.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function deleteWellPlan(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(wellPlans).where(eq(wellPlans.id, id));
+  return { success: true };
 }

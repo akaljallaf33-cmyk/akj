@@ -88,3 +88,21 @@ export const oilPrices = mysqlTable('oil_prices', {
 
 export type OilPriceRow = typeof oilPrices.$inferSelect;
 export type InsertOilPrice = typeof oilPrices.$inferInsert;
+
+// Well Planning: upcoming wells with expected recovery targets
+export const wellPlans = mysqlTable('well_plans', {
+  id: int('id').autoincrement().primaryKey(),
+  year: int('year').notNull(),                              // e.g. 2026
+  platform: varchar('platform', { length: 128 }).notNull(),
+  wellNumber: varchar('wellNumber', { length: 64 }).notNull(),
+  serviceLine: mysqlEnum('serviceLine', ['coiled-tubing', 'wireline', 'pumping']).notNull(),
+  plannedJobType: varchar('plannedJobType', { length: 128 }), // optional planned job type
+  expectedRecovery: int('expectedRecovery'),                 // bbl/d expected gain
+  plannedDate: varchar('plannedDate', { length: 10 }),       // YYYY-MM-DD target date
+  notes: text('notes'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+});
+
+export type WellPlanRow = typeof wellPlans.$inferSelect;
+export type InsertWellPlan = typeof wellPlans.$inferInsert;

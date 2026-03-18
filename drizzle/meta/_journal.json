@@ -43,6 +43,13 @@
       "when": 1773780138369,
       "tag": "0005_dry_korvac",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1773861448534,
+      "tag": "0006_yellow_vin_gonzales",
+      "breakpoints": true
     }
   ]
 }

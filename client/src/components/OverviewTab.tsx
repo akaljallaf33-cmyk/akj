@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import { useData } from '@/contexts/DataContext';
 import { SERVICE_LINE_LABELS, ServiceLine, MONTHS_2026, WellJob } from '@/lib/types';
-import { TrendingUp, TrendingDown, Activity, CheckCircle2, AlertCircle, XCircle, Trophy, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, CheckCircle2, AlertCircle, XCircle, Trophy, ChevronRight, AlertTriangle, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,139 @@ const SL_COLORS: Record<ServiceLine, string> = {
 };
 
 const SL_LIST: ServiceLine[] = ['coiled-tubing', 'wireline'];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getStoredOilPrice(): number {
+  try {
+    const stored = localStorage.getItem('wi_oil_prices');
+    if (!stored) return 75;
+    const prices: Record<string, number> = JSON.parse(stored);
+    const keys = Object.keys(prices).sort().reverse();
+    for (const k of keys) { if (prices[k] > 0) return prices[k]; }
+    return 75;
+  } catch { return 75; }
+}
+
+function daysToYearEnd(): number {
+  const now = new Date();
+  const yearEnd = new Date('2026-12-31');
+  return Math.max(0, Math.ceil((yearEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+}
+
+// ─── Deferred Production Section ─────────────────────────────────────────────
+
+function DeferredProductionSection() {
+  const { jobs } = useData();
+  const oilPrice = getStoredOilPrice();
+  const daysLeft = daysToYearEnd();
+
+  // A well has "deferred production" when its After job production is LESS than Before,
+  // meaning the intervention did not restore production. Deferred = Before - After (positive = loss).
+  const deferredWells = useMemo(() => {
+    return jobs
+      .filter(j => j.productionBefore !== null && j.productionAfter !== null && j.productionAfter < j.productionBefore)
+      .map(j => ({
+        id: j.id,
+        platform: j.platform,
+        wellNumber: j.wellNumber,
+        serviceLine: j.serviceLine,
+        status: j.status,
+        deferred: (j.productionBefore ?? 0) - (j.productionAfter ?? 0), // bbl/d still lost
+        endDate: j.endDate,
+      }))
+      .sort((a, b) => b.deferred - a.deferred);
+  }, [jobs]);
+
+  const totalDeferred = deferredWells.reduce((sum, w) => sum + w.deferred, 0);
+  const dollarImpact = totalDeferred * oilPrice * daysLeft;
+
+  if (deferredWells.length === 0) return null;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+      <div className="bg-white rounded-xl shadow-sm border-0 overflow-hidden">
+        {/* Header */}
+        <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <p className="text-sm font-bold text-slate-800 uppercase tracking-wider">Deferred Production</p>
+              </div>
+              <p className="text-xs text-slate-400">
+                Wells where production after intervention is still below pre-job level
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-2xl font-bold font-mono text-red-500">-{totalDeferred.toLocaleString()} bbl/d</p>
+              <p className="text-xs text-slate-400 mt-0.5">total production still deferred</p>
+            </div>
+          </div>
+
+          {/* Dollar impact banner */}
+          <div className="mt-4 rounded-lg bg-red-50 border border-red-100 px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-red-400" />
+              <p className="text-xs font-semibold text-red-700">
+                Estimated revenue impact to 31 Dec 2026
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-bold font-mono text-red-600">
+                ${(dollarImpact / 1_000_000).toFixed(2)}M
+              </p>
+              <p className="text-xs text-slate-400">
+                {totalDeferred.toLocaleString()} bbl/d × ${oilPrice}/bbl × {daysLeft} days
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Per-well breakdown */}
+        <div className="divide-y divide-slate-50">
+          {deferredWells.map((w, idx) => {
+            const wellDollar = w.deferred * oilPrice * daysLeft;
+            const pct = totalDeferred > 0 ? (w.deferred / totalDeferred) * 100 : 0;
+            return (
+              <motion.div
+                key={w.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + idx * 0.05 }}
+                className="px-6 py-3"
+              >
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-bold text-slate-400 font-mono w-5 shrink-0">{idx + 1}</span>
+                    <span className="font-semibold text-slate-700 text-sm">{w.platform}</span>
+                    <span className="font-mono text-sm text-slate-500">{w.wellNumber}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                      w.serviceLine === 'coiled-tubing' ? 'bg-[#073674]/10 text-[#073674]' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {w.serviceLine === 'coiled-tubing' ? 'CT' : 'WL'}
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold font-mono text-red-500">-{w.deferred.toLocaleString()} bbl/d</p>
+                    <p className="text-xs text-slate-400">${(wellDollar / 1_000).toFixed(0)}K impact</p>
+                  </div>
+                </div>
+                {/* Progress bar showing share of total deferred */}
+                <div className="w-full bg-slate-100 rounded-full h-1.5">
+                  <div
+                    className="bg-red-400 h-1.5 rounded-full transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 function MonthlyImpactChart() {
   const { jobs } = useData();
@@ -484,6 +617,9 @@ export default function OverviewTab() {
           monthLabel={`${statusFilter} Jobs`}
         />
       )}
+
+      {/* Deferred Production */}
+      <DeferredProductionSection />
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

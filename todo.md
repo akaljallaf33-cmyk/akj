@@ -58,3 +58,4 @@
 - [x] Wire WellHistoryDialog to Overview leaderboard and CT/WL job tables
 - [x] Replace Well History popup with dedicated Well History tab (platform + well selector dropdowns, chronological timeline, production trend chart)
 - [x] Add platform filter dropdown to CT and WL tabs to filter the Well-by-Well chart and job table by platform
+- [x] Add Deferred Production section to Overview: total bbl/d not recovered, dollar impact to year-end, per-well breakdown

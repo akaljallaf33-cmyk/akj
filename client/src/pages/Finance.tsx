@@ -563,28 +563,6 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
         </Card>
       </div>
 
-      {/* Total Loss KPI — only shown when there are loss jobs */}
-      {lossRows.length > 0 && (
-        <Card className="border-0 shadow-sm bg-red-50 border border-red-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingDown className="w-4 h-4 text-red-500" />
-              <p className="text-xs font-bold uppercase tracking-wider text-red-600">Total Production Loss from Failed / Partial Jobs</p>
-              <span className="ml-auto text-xs text-red-400 font-medium">{lossRows.length} job{lossRows.length !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-2xl font-bold text-red-600 font-mono">{fmt(totalLossBbl)} bbl/d</p>
-                <p className="text-xs text-red-400 mt-0.5">production lost at +30 days</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-red-600 font-mono">{fmtUSD(totalLossUSD)}</p>
-                <p className="text-xs text-red-400 mt-0.5">revenue impact to 31 Dec 2026</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* ROI Table */}
       <Card className="border-0 shadow-sm bg-white">

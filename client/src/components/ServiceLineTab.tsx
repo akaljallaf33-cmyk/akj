@@ -1,7 +1,7 @@
 // ServiceLineTab — Shows all jobs for a specific service line with add/edit/delete and production data
 // Includes platform filter that scopes the Well-by-Well chart and job table
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
@@ -528,9 +528,9 @@ export default function ServiceLineTab({ serviceLine, selectedYear }: Props) {
                 <TableBody>
                   <AnimatePresence>
                     {filteredJobs.map((job, idx) => (
-                      <>
+                      <React.Fragment key={job.id}>
                       <motion.tr
-                        key={job.id}
+                        key={`row-${job.id}`}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 10 }}
@@ -638,7 +638,7 @@ export default function ServiceLineTab({ serviceLine, selectedYear }: Props) {
                           </td>
                         </tr>
                       )}
-                      </>
+                      </React.Fragment>
                     ))}
                   </AnimatePresence>
                 </TableBody>

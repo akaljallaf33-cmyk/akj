@@ -330,6 +330,7 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
   const jobs = allJobs.filter(j => j.startDate.startsWith(String(year)));
   const [showThisMonthJobs, setShowThisMonthJobs] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'Failed' | 'Partially Successful' | null>(null);
+  const [showExpectedPlans, setShowExpectedPlans] = useState(false);
 
   // Fetch well plans for the current year to compute expected recovery this month
   const { data: wellPlans = [] } = trpc.wellPlans.list.useQuery({ year });
@@ -409,13 +410,14 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
         </div>
       </motion.div>
 
-      {/* Expected Recovery This Month — from upcoming well plans */}
+      {/* Expected Recovery This Month — tappable strip */}
       {expectedThisMonth > 0 && (
-        <motion.div
+        <motion.button
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="-mt-3 rounded-b-xl rounded-t-none border border-t-0 border-blue-200 bg-blue-50 px-6 py-3 flex items-center justify-between"
+          onClick={() => setShowExpectedPlans(true)}
+          className="w-full text-left -mt-3 rounded-b-xl rounded-t-none border border-t-0 border-blue-200 bg-blue-50 px-6 py-3 flex items-center justify-between hover:bg-blue-100 active:bg-blue-200 transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-[#073674]" />
@@ -423,11 +425,116 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
               Expected to recover this month
             </p>
           </div>
-          <p className="text-sm font-bold font-mono text-[#073674]">
-            +{expectedThisMonth.toLocaleString()} bbl/d
-          </p>
-        </motion.div>
+          <div className="flex items-center gap-1">
+            <p className="text-sm font-bold font-mono text-[#073674]">
+              +{expectedThisMonth.toLocaleString()} bbl/d
+            </p>
+            <ChevronRight className="w-3.5 h-3.5 text-[#073674]" />
+          </div>
+        </motion.button>
       )}
+
+      {/* Expected Plans Popup */}
+      <Dialog open={showExpectedPlans} onOpenChange={setShowExpectedPlans}>
+        <DialogContent className="max-w-md w-full max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#073674] text-base font-bold">
+              Planned Wells — {now.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            {/* Pending */}
+            {(() => {
+              const pending = expectedThisMonthPlans.filter(p => {
+                const matched = jobs.filter(j =>
+                  j.platform === p.platform &&
+                  j.wellNumber === p.wellNumber &&
+                  j.serviceLine === p.serviceLine
+                );
+                return matched.length === 0;
+              });
+              const done = expectedThisMonthPlans.filter(p => {
+                const matched = jobs.filter(j =>
+                  j.platform === p.platform &&
+                  j.wellNumber === p.wellNumber &&
+                  j.serviceLine === p.serviceLine
+                );
+                return matched.length > 0;
+              });
+              return (
+                <>
+                  {pending.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-amber-600 mb-2">Pending ({pending.length})</p>
+                      <div className="space-y-2">
+                        {pending.map(p => (
+                          <div key={p.id} className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-100">
+                            <div className="w-2 h-2 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-800">{p.platform} — Well {p.wellNumber}</p>
+                              <p className="text-xs text-slate-500">{p.serviceLine === 'coiled-tubing' ? 'Coiled Tubing' : 'Wireline'}{p.plannedJobType ? ` · ${p.plannedJobType}` : ''}</p>
+                              {p.expectedRecovery != null && (
+                                <p className="text-xs font-semibold text-[#073674] mt-0.5">Expected: +{p.expectedRecovery} bbl/d</p>
+                              )}
+                              {p.plannedDate && (
+                                <p className="text-xs text-slate-400 font-mono mt-0.5">Target: {new Date(p.plannedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {done.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-2">Done ({done.length})</p>
+                      <div className="space-y-2">
+                        {done.map(p => {
+                          const matchedJobs = jobs.filter(j =>
+                            j.platform === p.platform &&
+                            j.wellNumber === p.wellNumber &&
+                            j.serviceLine === p.serviceLine
+                          );
+                          const actualRecovery = matchedJobs.reduce((sum, j) => {
+                            if (j.productionBefore !== null && j.productionAfter !== null) {
+                              return sum + (j.productionAfter - j.productionBefore);
+                            }
+                            return sum;
+                          }, 0);
+                          const delta = p.expectedRecovery != null ? actualRecovery - p.expectedRecovery : null;
+                          return (
+                            <div key={p.id} className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-100">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-slate-800">{p.platform} — Well {p.wellNumber}</p>
+                                <p className="text-xs text-slate-500">{p.serviceLine === 'coiled-tubing' ? 'Coiled Tubing' : 'Wireline'}{p.plannedJobType ? ` · ${p.plannedJobType}` : ''}</p>
+                                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                                  {p.expectedRecovery != null && (
+                                    <p className="text-xs text-slate-500">Expected: <span className="font-semibold text-[#073674]">+{p.expectedRecovery} bbl/d</span></p>
+                                  )}
+                                  <p className="text-xs text-slate-500">Actual: <span className={`font-semibold ${actualRecovery >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{actualRecovery >= 0 ? '+' : ''}{actualRecovery} bbl/d</span></p>
+                                  {delta !== null && (
+                                    <span className={`text-xs font-bold ${delta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                      {delta >= 0 ? '▲' : '▼'} {Math.abs(delta)} bbl/d
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {pending.length === 0 && done.length === 0 && (
+                    <p className="text-sm text-slate-400 text-center py-6">No planned wells for this month</p>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* This Month Jobs Dialog */}
       <ThisMonthJobsDialog

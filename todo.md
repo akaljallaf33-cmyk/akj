@@ -78,3 +78,5 @@
 - [x] Add monthly Expected vs Actual recovery bar chart to Well History tab (all 12 months side by side)
 - [x] Collapse Well Planning list by default — show only summary stats, tap to expand individual wells
 - [x] Tap "Expected to recover this month" strip on Overview to open popup showing this month's planned wells (Pending + Done)
+- [ ] Enforce login on all pages — redirect unauthenticated users to login screen, no page accessible without credentials
+- [ ] Migrate to Render.com hosting to bypass Manus OAuth gate — remove Manus OAuth dependency, configure standalone deployment with custom wi-dash.com domain

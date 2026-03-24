@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { getDb } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -26,7 +27,99 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+async function runMigrations() {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const { Pool } = await import('pg');
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+    const client = await pool.connect();
+    await client.query(`
+      CREATE TYPE IF NOT EXISTS "role" AS ENUM ('user', 'admin');
+      CREATE TYPE IF NOT EXISTS "serviceLine" AS ENUM ('coiled-tubing', 'wireline', 'pumping');
+      CREATE TYPE IF NOT EXISTS "status" AS ENUM ('Successful', 'Partially Successful', 'Failed');
+    `).catch(() => {}); // ignore if types already exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        "openId" VARCHAR(64) NOT NULL UNIQUE,
+        name TEXT,
+        email VARCHAR(320),
+        "loginMethod" VARCHAR(64),
+        role "role" NOT NULL DEFAULT 'user',
+        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "lastSignedIn" TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS well_jobs (
+        id SERIAL PRIMARY KEY,
+        "serviceLine" "serviceLine" NOT NULL,
+        platform VARCHAR(128) NOT NULL,
+        "wellNumber" VARCHAR(64) NOT NULL,
+        unit VARCHAR(32),
+        "jobType" VARCHAR(128) NOT NULL,
+        "startDate" VARCHAR(10) NOT NULL,
+        "endDate" VARCHAR(10) NOT NULL,
+        "productionBefore" INTEGER,
+        "productionAfter" INTEGER,
+        "production30Days" INTEGER,
+        status "status" NOT NULL,
+        notes TEXT,
+        "ct1DailyRate" DOUBLE PRECISION,
+        "operationalDays" DOUBLE PRECISION,
+        "badWeatherDays" DOUBLE PRECISION,
+        "onRig" INTEGER DEFAULT 0,
+        "rigDailyRate" DOUBLE PRECISION,
+        "rigOperationalDays" DOUBLE PRECISION,
+        "rigBadWeatherDays" DOUBLE PRECISION,
+        "jobBill" DOUBLE PRECISION,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS job_finance (
+        id SERIAL PRIMARY KEY,
+        "wellJobId" INTEGER NOT NULL UNIQUE,
+        "ct1DailyRate" INTEGER,
+        "operationalDays" INTEGER,
+        "badWeatherDays" INTEGER,
+        "jobBill" INTEGER,
+        notes TEXT,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS oil_prices (
+        id SERIAL PRIMARY KEY,
+        month VARCHAR(7) NOT NULL UNIQUE,
+        "avgPrice" INTEGER NOT NULL,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS well_plans (
+        id SERIAL PRIMARY KEY,
+        year INTEGER NOT NULL,
+        platform VARCHAR(128) NOT NULL,
+        "wellNumber" VARCHAR(64) NOT NULL,
+        "serviceLine" "serviceLine" NOT NULL,
+        "plannedJobType" VARCHAR(128),
+        "expectedRecovery" INTEGER,
+        "plannedDate" VARCHAR(10),
+        notes TEXT,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    client.release();
+    await pool.end();
+    console.log('[Database] Schema ready');
+  } catch (err) {
+    console.error('[Database] Migration error:', err);
+  }
+}
+
 async function startServer() {
+  await runMigrations();
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads

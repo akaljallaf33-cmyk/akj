@@ -1,15 +1,21 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { InsertJobFinance, InsertOilPrice, InsertUser, InsertWellJob, InsertWellPlan, jobFinance, oilPrices, users, wellJobs, wellPlans } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.DATABASE_URL.includes('sslmode=require') || process.env.DATABASE_URL.includes('ssl=true')
+          ? { rejectUnauthorized: false }
+          : false,
+      });
+      _db = drizzle(pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -68,9 +74,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
+    await db.insert(users).values(values)
+      .onConflictDoUpdate({
+        target: users.openId,
+        set: updateSet,
+      });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -85,11 +93,8 @@ export async function getUserByOpenId(openId: string) {
   }
 
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
-
-// TODO: add feature queries here as your schema grows.
 
 // ─── Well Jobs ───────────────────────────────────────────────────────────────
 
@@ -102,17 +107,14 @@ export async function getAllWellJobs() {
 export async function createWellJob(data: InsertWellJob) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  const result = await db.insert(wellJobs).values(data);
-  const insertId = (result[0] as { insertId: number }).insertId;
-  const rows = await db.select().from(wellJobs).where(eq(wellJobs.id, insertId)).limit(1);
+  const rows = await db.insert(wellJobs).values(data).returning();
   return rows[0];
 }
 
 export async function updateWellJob(id: number, data: Partial<InsertWellJob>) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  await db.update(wellJobs).set(data).where(eq(wellJobs.id, id));
-  const rows = await db.select().from(wellJobs).where(eq(wellJobs.id, id)).limit(1);
+  const rows = await db.update(wellJobs).set(data).where(eq(wellJobs.id, id)).returning();
   return rows[0];
 }
 
@@ -141,15 +143,17 @@ export async function getJobFinanceByWellJobId(wellJobId: number) {
 export async function upsertJobFinance(data: InsertJobFinance) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  await db.insert(jobFinance).values(data).onDuplicateKeyUpdate({
-    set: {
-      ct1DailyRate: data.ct1DailyRate,
-      operationalDays: data.operationalDays,
-      badWeatherDays: data.badWeatherDays,
-      jobBill: data.jobBill,
-      notes: data.notes,
-    },
-  });
+  await db.insert(jobFinance).values(data)
+    .onConflictDoUpdate({
+      target: jobFinance.wellJobId,
+      set: {
+        ct1DailyRate: data.ct1DailyRate,
+        operationalDays: data.operationalDays,
+        badWeatherDays: data.badWeatherDays,
+        jobBill: data.jobBill,
+        notes: data.notes,
+      },
+    });
   const rows = await db.select().from(jobFinance).where(eq(jobFinance.wellJobId, data.wellJobId)).limit(1);
   return rows[0];
 }
@@ -172,9 +176,11 @@ export async function getAllOilPrices() {
 export async function upsertOilPrice(data: InsertOilPrice) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  await db.insert(oilPrices).values(data).onDuplicateKeyUpdate({
-    set: { avgPrice: data.avgPrice },
-  });
+  await db.insert(oilPrices).values(data)
+    .onConflictDoUpdate({
+      target: oilPrices.month,
+      set: { avgPrice: data.avgPrice },
+    });
   const rows = await db.select().from(oilPrices).where(eq(oilPrices.month, data.month)).limit(1);
   return rows[0];
 }
@@ -193,17 +199,14 @@ export async function getAllWellPlans(year?: number) {
 export async function createWellPlan(data: InsertWellPlan) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  const result = await db.insert(wellPlans).values(data);
-  const insertId = (result[0] as { insertId: number }).insertId;
-  const rows = await db.select().from(wellPlans).where(eq(wellPlans.id, insertId)).limit(1);
+  const rows = await db.insert(wellPlans).values(data).returning();
   return rows[0];
 }
 
 export async function updateWellPlan(id: number, data: Partial<InsertWellPlan>) {
   const db = await getDb();
   if (!db) throw new Error('Database not available');
-  await db.update(wellPlans).set(data).where(eq(wellPlans.id, id));
-  const rows = await db.select().from(wellPlans).where(eq(wellPlans.id, id)).limit(1);
+  const rows = await db.update(wellPlans).set(data).where(eq(wellPlans.id, id)).returning();
   return rows[0];
 }
 

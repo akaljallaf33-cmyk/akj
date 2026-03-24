@@ -1,1 +1,0 @@
-ALTER TABLE `well_jobs` ADD `unit` varchar(32);

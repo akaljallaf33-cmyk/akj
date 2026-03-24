@@ -3,7 +3,7 @@ import type { CreateExpressContextOptions } from "@trpc/server/adapters/express"
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
-  user: null;
+  user: { role: 'admin' | 'user'; name?: string | null; email?: string | null } | null;
 };
 
 export async function createContext(

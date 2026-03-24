@@ -1,107 +1,97 @@
-import { double, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { doublePrecision, integer, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+
+export const roleEnum = pgEnum("role", ["user", "admin"]);
+export const serviceLineEnum = pgEnum("serviceLine", ["coiled-tubing", "wireline", "pumping"]);
+export const statusEnum = pgEnum("status", ["Successful", "Partially Successful", "Failed"]);
 
 /**
  * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
  */
-export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
-  id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: roleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
-
-export const wellJobs = mysqlTable('well_jobs', {
-  id: int('id').autoincrement().primaryKey(),
-  serviceLine: mysqlEnum('serviceLine', ['coiled-tubing', 'wireline', 'pumping']).notNull(),
+export const wellJobs = pgTable('well_jobs', {
+  id: serial('id').primaryKey(),
+  serviceLine: serviceLineEnum('serviceLine').notNull(),
   platform: varchar('platform', { length: 128 }).notNull(),
   wellNumber: varchar('wellNumber', { length: 64 }).notNull(),
   unit: varchar('unit', { length: 32 }),
   jobType: varchar('jobType', { length: 128 }).notNull(),
-  startDate: varchar('startDate', { length: 10 }).notNull(), // YYYY-MM-DD — job start date
-  endDate: varchar('endDate', { length: 10 }).notNull(),   // YYYY-MM-DD — job end date (used for month grouping)
-  productionBefore: int('productionBefore'),
-  productionAfter: int('productionAfter'),
-  production30Days: int('production30Days'),
-  status: mysqlEnum('status', ['Successful', 'Partially Successful', 'Failed']).notNull(),
+  startDate: varchar('startDate', { length: 10 }).notNull(),
+  endDate: varchar('endDate', { length: 10 }).notNull(),
+  productionBefore: integer('productionBefore'),
+  productionAfter: integer('productionAfter'),
+  production30Days: integer('production30Days'),
+  status: statusEnum('status').notNull(),
   notes: text('notes'),
   // CT-1 cost fields (jack-up based)
-  ct1DailyRate: double('ct1DailyRate'),       // USD/day — CT-1 jack-up daily rate
-  operationalDays: double('operationalDays'), // days at full rate
-  badWeatherDays: double('badWeatherDays'),   // days at 50% rate
+  ct1DailyRate: doublePrecision('ct1DailyRate'),
+  operationalDays: doublePrecision('operationalDays'),
+  badWeatherDays: doublePrecision('badWeatherDays'),
   // CT-2 rig cost fields (when CT-2 is on a rig)
-  onRig: int('onRig').default(0),             // 0 = no rig, 1 = on rig
-  rigDailyRate: double('rigDailyRate'),        // USD/day — rig daily rate for CT-2
-  rigOperationalDays: double('rigOperationalDays'), // rig days at full rate
-  rigBadWeatherDays: double('rigBadWeatherDays'),   // rig days at 50% rate
+  onRig: integer('onRig').default(0),
+  rigDailyRate: doublePrecision('rigDailyRate'),
+  rigOperationalDays: doublePrecision('rigOperationalDays'),
+  rigBadWeatherDays: doublePrecision('rigBadWeatherDays'),
   // Shared
-  jobBill: double('jobBill'),                 // USD — job service bill
+  jobBill: doublePrecision('jobBill'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
 export type WellJobRow = typeof wellJobs.$inferSelect;
 export type InsertWellJob = typeof wellJobs.$inferInsert;
 
-// Finance: per-job cost data linked to a well job
-export const jobFinance = mysqlTable('job_finance', {
-  id: int('id').autoincrement().primaryKey(),
-  wellJobId: int('wellJobId').notNull().unique(), // 1-to-1 with well_jobs
-  // CT-1 specific fields (jack-up)
-  ct1DailyRate: int('ct1DailyRate'),       // USD/day
-  operationalDays: int('operationalDays'), // days at full rate
-  badWeatherDays: int('badWeatherDays'),   // days at 50% rate
-  // Shared
-  jobBill: int('jobBill'),                 // USD — additional job cost
+export const jobFinance = pgTable('job_finance', {
+  id: serial('id').primaryKey(),
+  wellJobId: integer('wellJobId').notNull().unique(),
+  ct1DailyRate: integer('ct1DailyRate'),
+  operationalDays: integer('operationalDays'),
+  badWeatherDays: integer('badWeatherDays'),
+  jobBill: integer('jobBill'),
   notes: text('notes'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
 export type JobFinanceRow = typeof jobFinance.$inferSelect;
 export type InsertJobFinance = typeof jobFinance.$inferInsert;
 
-// Finance: monthly average oil prices (Brent crude, USD/bbl)
-export const oilPrices = mysqlTable('oil_prices', {
-  id: int('id').autoincrement().primaryKey(),
-  month: varchar('month', { length: 7 }).notNull().unique(), // e.g. '2026-01'
-  avgPrice: int('avgPrice').notNull(),                       // USD/bbl
+export const oilPrices = pgTable('oil_prices', {
+  id: serial('id').primaryKey(),
+  month: varchar('month', { length: 7 }).notNull().unique(),
+  avgPrice: integer('avgPrice').notNull(),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
 export type OilPriceRow = typeof oilPrices.$inferSelect;
 export type InsertOilPrice = typeof oilPrices.$inferInsert;
 
-// Well Planning: upcoming wells with expected recovery targets
-export const wellPlans = mysqlTable('well_plans', {
-  id: int('id').autoincrement().primaryKey(),
-  year: int('year').notNull(),                              // e.g. 2026
+export const wellPlans = pgTable('well_plans', {
+  id: serial('id').primaryKey(),
+  year: integer('year').notNull(),
   platform: varchar('platform', { length: 128 }).notNull(),
   wellNumber: varchar('wellNumber', { length: 64 }).notNull(),
-  serviceLine: mysqlEnum('serviceLine', ['coiled-tubing', 'wireline', 'pumping']).notNull(),
-  plannedJobType: varchar('plannedJobType', { length: 128 }), // optional planned job type
-  expectedRecovery: int('expectedRecovery'),                 // bbl/d expected gain
-  plannedDate: varchar('plannedDate', { length: 10 }),       // YYYY-MM-DD target date
+  serviceLine: serviceLineEnum('serviceLine').notNull(),
+  plannedJobType: varchar('plannedJobType', { length: 128 }),
+  expectedRecovery: integer('expectedRecovery'),
+  plannedDate: varchar('plannedDate', { length: 10 }),
   notes: text('notes'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
 export type WellPlanRow = typeof wellPlans.$inferSelect;

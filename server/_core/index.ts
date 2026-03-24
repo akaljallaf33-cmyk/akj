@@ -29,38 +29,48 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function runMigrations() {
   if (!process.env.DATABASE_URL) return;
-  try {
-    const { Pool } = await import('pg');
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-    });
-    const client = await pool.connect();
-    await client.query(`
-      CREATE TYPE IF NOT EXISTS "role" AS ENUM ('user', 'admin');
-      CREATE TYPE IF NOT EXISTS "serviceLine" AS ENUM ('coiled-tubing', 'wireline', 'pumping');
-      CREATE TYPE IF NOT EXISTS "status" AS ENUM ('Complete', 'Incomplete');
-    `).catch(() => {}); // ignore if types already exist
+  const { Pool } = await import('pg');
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  });
+  const client = await pool.connect();
 
-    // Migrate old status enum values if needed
+  // Step 1: Create enum types individually (each in its own try/catch)
+  try { await client.query(`CREATE TYPE "role" AS ENUM ('user', 'admin')`); } catch { /* already exists */ }
+  try { await client.query(`CREATE TYPE "serviceLine" AS ENUM ('coiled-tubing', 'wireline', 'pumping')`); } catch { /* already exists */ }
+  try { await client.query(`CREATE TYPE "status" AS ENUM ('Complete', 'Incomplete')`); } catch { /* already exists */ }
+
+  // Step 2: Migrate old status enum values (Successful -> Complete, Failed/Partial -> Incomplete)
+  try {
     await client.query(`
       DO $$
       BEGIN
-        -- Check if old enum values exist and migrate them
-        IF EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'status' AND e.enumlabel = 'Successful') THEN
-          -- Update existing rows first
-          UPDATE well_jobs SET status = 'Complete'::text WHERE status::text = 'Successful';
-          UPDATE well_jobs SET status = 'Incomplete'::text WHERE status::text IN ('Partially Successful', 'Failed');
-          -- Rename old type, create new one, swap column, drop old
-          ALTER TYPE status RENAME TO status_old;
+        IF EXISTS (
+          SELECT 1 FROM pg_enum e
+          JOIN pg_type t ON e.enumtypid = t.oid
+          WHERE t.typname = 'status' AND e.enumlabel = 'Successful'
+        ) THEN
+          -- Temporarily cast to text to allow update
+          ALTER TABLE well_jobs ALTER COLUMN status TYPE TEXT;
+          UPDATE well_jobs SET status = 'Complete' WHERE status = 'Successful';
+          UPDATE well_jobs SET status = 'Incomplete' WHERE status IN ('Partially Successful', 'Failed');
+          -- Drop old enum and create new one
+          DROP TYPE IF EXISTS status;
           CREATE TYPE status AS ENUM ('Complete', 'Incomplete');
-          ALTER TABLE well_jobs ALTER COLUMN status TYPE status USING status::text::status;
-          DROP TYPE status_old;
+          -- Cast column back to new enum
+          ALTER TABLE well_jobs ALTER COLUMN status TYPE status USING status::status;
         END IF;
       END
       $$;
-    `).catch((e: unknown) => console.log('[Database] Status migration skipped:', (e as Error).message));
+    `);
+    console.log('[Database] Status enum migration complete');
+  } catch (e) {
+    console.log('[Database] Status migration note:', (e as Error).message);
+  }
 
+  // Step 3: Create tables
+  try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -130,16 +140,21 @@ async function runMigrations() {
         "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    client.release();
-    await pool.end();
-    console.log('[Database] Schema ready');
-  } catch (err) {
-    console.error('[Database] Migration error:', err);
+  } catch (e) {
+    console.error('[Database] Table creation error:', (e as Error).message);
   }
+
+  client.release();
+  await pool.end();
+  console.log('[Database] Schema ready');
 }
 
 async function startServer() {
-  await runMigrations();
+  try {
+    await runMigrations();
+  } catch (err) {
+    console.error('[Database] Migration error:', err);
+  }
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads

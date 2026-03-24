@@ -39,7 +39,8 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const isAdmin = input.username === ENV.dashboardUsername && input.password === ENV.dashboardPassword;
         const isGuest = input.username === ENV.guestUsername && input.password === ENV.guestPassword;
-        if (!isAdmin && !isGuest) {
+        const isMichel = input.username === ENV.michelUsername && input.password === ENV.michelPassword;
+        if (!isAdmin && !isGuest && !isMichel) {
           throw new Error("Invalid username or password");
         }
         const role = isAdmin ? 'admin' : 'guest';

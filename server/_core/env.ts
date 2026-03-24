@@ -13,4 +13,7 @@ export const ENV = {
   // Guest credentials (read-only)
   guestUsername: process.env.GUEST_USERNAME ?? "guest",
   guestPassword: process.env.GUEST_PASSWORD ?? "guest",
+  // Demo account for Michel (read-only)
+  michelUsername: process.env.MICHEL_USERNAME ?? "michel",
+  michelPassword: process.env.MICHEL_PASSWORD ?? "khammo",
 };

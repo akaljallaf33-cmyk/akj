@@ -39,8 +39,28 @@ async function runMigrations() {
     await client.query(`
       CREATE TYPE IF NOT EXISTS "role" AS ENUM ('user', 'admin');
       CREATE TYPE IF NOT EXISTS "serviceLine" AS ENUM ('coiled-tubing', 'wireline', 'pumping');
-      CREATE TYPE IF NOT EXISTS "status" AS ENUM ('Successful', 'Partially Successful', 'Failed');
+      CREATE TYPE IF NOT EXISTS "status" AS ENUM ('Complete', 'Incomplete');
     `).catch(() => {}); // ignore if types already exist
+
+    // Migrate old status enum values if needed
+    await client.query(`
+      DO $$
+      BEGIN
+        -- Check if old enum values exist and migrate them
+        IF EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = 'status' AND e.enumlabel = 'Successful') THEN
+          -- Update existing rows first
+          UPDATE well_jobs SET status = 'Complete'::text WHERE status::text = 'Successful';
+          UPDATE well_jobs SET status = 'Incomplete'::text WHERE status::text IN ('Partially Successful', 'Failed');
+          -- Rename old type, create new one, swap column, drop old
+          ALTER TYPE status RENAME TO status_old;
+          CREATE TYPE status AS ENUM ('Complete', 'Incomplete');
+          ALTER TABLE well_jobs ALTER COLUMN status TYPE status USING status::text::status;
+          DROP TYPE status_old;
+        END IF;
+      END
+      $$;
+    `).catch((e: unknown) => console.log('[Database] Status migration skipped:', (e as Error).message));
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,

@@ -37,7 +37,7 @@ const defaultForm = (sl: ServiceLine): Omit<WellJob, 'id'> => ({
   productionBefore: null,
   productionAfter: null,
   production30Days: null,
-  status: 'Successful',
+  status: 'Complete',
   notes: '',
   ct1DailyRate: null,
   operationalDays: null,
@@ -322,9 +322,8 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Successful">Successful</SelectItem>
-                <SelectItem value="Partially Successful">Partially Successful</SelectItem>
-                <SelectItem value="Failed">Failed</SelectItem>
+                <SelectItem value="Complete">Complete</SelectItem>
+                <SelectItem value="Incomplete">Incomplete</SelectItem>
               </SelectContent>
             </Select>
           </div>

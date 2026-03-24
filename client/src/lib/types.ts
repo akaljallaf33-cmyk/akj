@@ -3,7 +3,7 @@
 
 export type ServiceLine = 'coiled-tubing' | 'wireline';
 
-export type JobStatus = 'Successful' | 'Partially Successful' | 'Failed';
+export type JobStatus = 'Complete' | 'Incomplete';
 
 export type JobType = {
   'coiled-tubing': string[];

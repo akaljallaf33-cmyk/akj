@@ -639,12 +639,10 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
                           ) : <span className="text-slate-300 text-xs">—</span>}
                         </TableCell>
                         <TableCell>
-                          {job.status === 'Successful' ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">✓ OK</span>
-                          ) : job.status === 'Partially Successful' ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">⚠ Partial</span>
-                          ) : job.status === 'Failed' ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">✗ Failed</span>
+                          {job.status === 'Complete' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">✓ Complete</span>
+                          ) : job.status === 'Incomplete' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">⚠ Incomplete</span>
                           ) : (
                             <span className="text-slate-300 text-xs">—</span>
                           )}

@@ -2,7 +2,7 @@ import { doublePrecision, integer, pgEnum, pgTable, serial, text, timestamp, var
 
 export const roleEnum = pgEnum("role", ["user", "admin"]);
 export const serviceLineEnum = pgEnum("serviceLine", ["coiled-tubing", "wireline", "pumping"]);
-export const statusEnum = pgEnum("status", ["Successful", "Partially Successful", "Failed"]);
+export const statusEnum = pgEnum("status", ["Complete", "Incomplete"]);
 
 /**
  * Core user table backing auth flow.

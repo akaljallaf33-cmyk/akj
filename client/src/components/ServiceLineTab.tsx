@@ -33,9 +33,8 @@ interface Props {
 
 function StatusBadge({ status }: { status: WellJob['status'] }) {
   const cls =
-    status === 'Successful' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-    status === 'Partially Successful' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-    'bg-red-100 text-red-800 border-red-200';
+    status === 'Complete' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+    'bg-amber-100 text-amber-800 border-amber-200';
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cls}`}>
       {status}
@@ -147,7 +146,7 @@ export default function ServiceLineTab({ serviceLine, selectedYear }: Props) {
 
   // KPI summary — always across ALL jobs (not filtered)
   const totalJobs = jobs.length;
-  const successful = jobs.filter(j => j.status === 'Successful').length;
+  const successful = jobs.filter(j => j.status === 'Complete').length;
   const totalRecoveryAfter = jobs.reduce((sum, j) => {
     if (j.productionBefore !== null && j.productionAfter !== null) return sum + (j.productionAfter - j.productionBefore);
     return sum;
@@ -250,7 +249,7 @@ export default function ServiceLineTab({ serviceLine, selectedYear }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Jobs', value: totalJobs, sub: 'in 2026' },
-          { label: 'Successful', value: successful, sub: `${totalJobs > 0 ? ((successful/totalJobs)*100).toFixed(0) : 0}% success rate` },
+          { label: 'Complete', value: successful, sub: `${totalJobs > 0 ? ((successful/totalJobs)*100).toFixed(0) : 0}% completion rate` },
           {
             label: 'Production Recovery After Job',
             value: (totalRecoveryAfter >= 0 ? '+' : '') + totalRecoveryAfter.toLocaleString(),

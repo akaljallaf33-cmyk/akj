@@ -277,9 +277,8 @@ function ThisMonthJobsDialog({ open, onClose, jobs, monthLabel }: {
             {jobs.map((job, idx) => {
               const recovery = job.productionBefore !== null && job.productionAfter !== null
                 ? job.productionAfter - job.productionBefore : null;
-              const statusColor = job.status === 'Successful' ? 'bg-emerald-100 text-emerald-800'
-                : job.status === 'Partially Successful' ? 'bg-amber-100 text-amber-800'
-                : 'bg-red-100 text-red-800';
+              const statusColor = job.status === 'Complete' ? 'bg-emerald-100 text-emerald-800'
+                : 'bg-amber-100 text-amber-800';
               return (
                 <div key={job.id} className="py-3 flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
@@ -329,15 +328,14 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
   const year = selectedYear ?? new Date().getFullYear();
   const jobs = allJobs.filter(j => j.startDate.startsWith(String(year)));
   const [showThisMonthJobs, setShowThisMonthJobs] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'Failed' | 'Partially Successful' | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'Incomplete' | null>(null);
   const [showExpectedPlans, setShowExpectedPlans] = useState(false);
 
   // Fetch well plans for the current year to compute expected recovery this month
   const { data: wellPlans = [] } = trpc.wellPlans.list.useQuery({ year });
   const totalJobs = jobs.length;
-  const totalSuccessful = jobs.filter(j => j.status === 'Successful').length;
-  const totalPartial = jobs.filter(j => j.status === 'Partially Successful').length;
-  const totalFailed = jobs.filter(j => j.status === 'Failed').length;
+  const totalSuccessful = jobs.filter(j => j.status === 'Complete').length;
+  const totalIncomplete = jobs.filter(j => j.status === 'Incomplete').length;
 
   const calcRecovery = (sl: ServiceLine) => ({
     after: jobs.filter(j => j.serviceLine === sl).reduce((sum, j) => {
@@ -373,7 +371,7 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
 
   const kpis = [
     { label: 'Total Jobs 2026', value: totalJobs, icon: Activity, color: '#073674', sub: 'All service lines' },
-    { label: 'Successful Jobs', value: totalSuccessful, icon: CheckCircle2, color: '#059669', sub: `${totalJobs > 0 ? ((totalSuccessful/totalJobs)*100).toFixed(0) : 0}% success rate` },
+    { label: 'Complete Jobs', value: totalSuccessful, icon: CheckCircle2, color: '#059669', sub: `${totalJobs > 0 ? ((totalSuccessful/totalJobs)*100).toFixed(0) : 0}% completion rate` },
   ];
 
   return (
@@ -593,18 +591,17 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
       </div>
 
       {/* Status Summary Row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {[
-          { label: 'Successful', count: totalSuccessful, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', status: 'Successful' as const, clickable: false },
-          { label: 'Partially Succ.', count: totalPartial, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', status: 'Partially Successful' as const, clickable: true },
-          { label: 'Failed', count: totalFailed, icon: XCircle, color: 'text-red-500', bg: 'bg-red-50 border-red-200', status: 'Failed' as const, clickable: true },
+          { label: 'Complete', count: totalSuccessful, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', status: null, clickable: false },
+          { label: 'Incomplete', count: totalIncomplete, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', status: 'Incomplete' as const, clickable: true },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 + i * 0.07 }}>
             <div
               className={`rounded-xl border px-4 py-4 flex items-center gap-3 transition-all ${
                 s.clickable && s.count > 0 ? 'cursor-pointer hover:shadow-md active:scale-[0.98]' : ''
               } ${s.bg}`}
-              onClick={() => s.clickable && s.count > 0 && setStatusFilter(s.status as 'Failed' | 'Partially Successful')}
+              onClick={() => s.clickable && s.count > 0 && s.status && setStatusFilter(s.status as 'Incomplete')}
             >
               <s.icon className={`w-6 h-6 flex-shrink-0 ${s.color}`} />
               <div className="min-w-0">

@@ -28,15 +28,13 @@ import {
 import { Search, History, TrendingUp, TrendingDown, Minus, CalendarClock, BarChart2 } from 'lucide-react';
 
 function statusColor(status: WellJob['status']) {
-  if (status === 'Successful') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-  if (status === 'Partially Successful') return 'bg-amber-100 text-amber-800 border-amber-200';
-  return 'bg-red-100 text-red-800 border-red-200';
+  if (status === 'Complete') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+  return 'bg-amber-100 text-amber-800 border-amber-200';
 }
 
 function statusDot(status: WellJob['status']) {
-  if (status === 'Successful') return 'bg-emerald-500';
-  if (status === 'Partially Successful') return 'bg-amber-500';
-  return 'bg-red-500';
+  if (status === 'Complete') return 'bg-emerald-500';
+  return 'bg-amber-500';
 }
 
 export default function WellHistoryTab({ selectedYear }: { selectedYear?: number }) {
@@ -326,12 +324,11 @@ export default function WellHistoryTab({ selectedYear }: { selectedYear?: number
 
             {/* Mini stats row */}
             <div className="mt-4 grid grid-cols-3 gap-3">
-              {(['Successful', 'Partially Successful', 'Failed'] as const).map(s => {
+              {(['Complete', 'Incomplete'] as const).map(s => {
                 const count = wellJobs.filter(j => j.status === s).length;
                 const color =
-                  s === 'Successful' ? 'text-emerald-600 bg-emerald-50' :
-                  s === 'Partially Successful' ? 'text-amber-600 bg-amber-50' :
-                  'text-red-600 bg-red-50';
+                  s === 'Complete' ? 'text-emerald-600 bg-emerald-50' :
+                  'text-amber-600 bg-amber-50';
                 return (
                   <div key={s} className={`rounded-lg p-2 text-center ${color}`}>
                     <div className="text-xl font-bold">{count}</div>

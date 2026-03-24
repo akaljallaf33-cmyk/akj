@@ -88,7 +88,7 @@ export const appRouter = router({
         productionBefore: z.number().int().nullable(),
         productionAfter: z.number().int().nullable(),
         production30Days: z.number().int().nullable(),
-        status: z.enum(['Successful', 'Partially Successful', 'Failed']),
+        status: z.enum(['Complete', 'Incomplete']),
         notes: z.string().optional(),
         // CT-1 cost fields
         ct1DailyRate: z.number().nullable().optional(),
@@ -120,7 +120,7 @@ export const appRouter = router({
         productionBefore: z.number().int().nullable().optional(),
         productionAfter: z.number().int().nullable().optional(),
         production30Days: z.number().int().nullable().optional(),
-        status: z.enum(['Successful', 'Partially Successful', 'Failed']).optional(),
+        status: z.enum(['Complete', 'Incomplete']).optional(),
         notes: z.string().optional(),
         // CT-1 cost fields
         ct1DailyRate: z.number().nullable().optional(),

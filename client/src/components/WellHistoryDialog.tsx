@@ -21,15 +21,13 @@ interface WellHistoryDialogProps {
 }
 
 function statusColor(status: WellJob["status"]) {
-  if (status === "Successful") return "bg-emerald-100 text-emerald-800 border-emerald-200";
-  if (status === "Partially Successful") return "bg-amber-100 text-amber-800 border-amber-200";
-  return "bg-red-100 text-red-800 border-red-200";
+  if (status === "Complete") return "bg-emerald-100 text-emerald-800 border-emerald-200";
+  return "bg-amber-100 text-amber-800 border-amber-200";
 }
 
 function statusDot(status: WellJob["status"]) {
-  if (status === "Successful") return "bg-emerald-500";
-  if (status === "Partially Successful") return "bg-amber-500";
-  return "bg-red-500";
+  if (status === "Complete") return "bg-emerald-500";
+  return "bg-amber-500";
 }
 
 export default function WellHistoryDialog({

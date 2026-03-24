@@ -545,9 +545,8 @@ export default function WellPlanningSection({ selectedYear }: { selectedYear: nu
                                   )}
                                 </div>
                                 <span className={`px-2 py-0.5 rounded-full font-semibold border ${
-                                  job.status === 'Successful' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-                                  job.status === 'Partially Successful' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                                  'bg-red-100 text-red-800 border-red-200'
+                                  job.status === 'Complete' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                                  'bg-amber-100 text-amber-800 border-amber-200'
                                 }`}>{job.status}</span>
                               </div>
                               <div className="flex items-center gap-4 mt-1.5 text-slate-400">

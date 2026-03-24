@@ -19,7 +19,7 @@ function rowToJob(row: {
   productionBefore: number | null;
   productionAfter: number | null;
   production30Days: number | null;
-  status: 'Successful' | 'Partially Successful' | 'Failed';
+  status: 'Complete' | 'Incomplete';
   notes?: string | null;
   // Cost fields
   ct1DailyRate?: number | null;

@@ -45,6 +45,11 @@ export const wellJobs = pgTable('well_jobs', {
   rigDailyRate: doublePrecision('rigDailyRate'),
   rigOperationalDays: doublePrecision('rigOperationalDays'),
   rigBadWeatherDays: doublePrecision('rigBadWeatherDays'),
+  // Wireline equipment rental cost
+  wlEquipmentRentPerDay: doublePrecision('wlEquipmentRentPerDay'),
+  wlRentalDays: doublePrecision('wlRentalDays'),
+  // CT NPT (Non-Productive Time) tracking
+  nptDays: doublePrecision('nptDays'),
   // Shared
   jobBill: doublePrecision('jobBill'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),

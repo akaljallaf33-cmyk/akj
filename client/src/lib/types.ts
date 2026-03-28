@@ -52,6 +52,11 @@ export interface WellJob {
   rigDailyRate?: number | null;       // USD/day — rig daily rate
   rigOperationalDays?: number | null; // rig days at full rate
   rigBadWeatherDays?: number | null;  // rig days at 50% rate
+  // Wireline equipment rental
+  wlEquipmentRentPerDay?: number | null; // USD/day — equipment rental rate
+  wlRentalDays?: number | null;          // number of rental days
+  // CT NPT tracking
+  nptDays?: number | null;               // non-productive time days
   // Shared
   jobBill?: number | null;            // USD — job service bill
 }

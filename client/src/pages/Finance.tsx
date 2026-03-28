@@ -27,6 +27,7 @@ function fmtUSD(n: number | null | undefined): string {
 }
 
 function calcJobTotalCost(job: {
+  serviceLine?: string | null;
   unit?: string | null;
   ct1DailyRate?: number | null;
   operationalDays?: number | null;
@@ -35,10 +36,18 @@ function calcJobTotalCost(job: {
   rigDailyRate?: number | null;
   rigOperationalDays?: number | null;
   rigBadWeatherDays?: number | null;
+  wlEquipmentRentPerDay?: number | null;
+  wlRentalDays?: number | null;
   jobBill?: number | null;
 }): number | null {
   let total = 0;
   const bill = job.jobBill ?? 0;
+
+  if (job.serviceLine === 'wireline') {
+    total += (job.wlEquipmentRentPerDay ?? 0) * (job.wlRentalDays ?? 0);
+    total += bill;
+    return total > 0 ? total : null;
+  }
 
   if (job.unit === 'CT-1') {
     const rate = job.ct1DailyRate ?? 0;
@@ -539,7 +548,7 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
         </Card>
         <Card className="border-0 shadow-sm bg-white">
           <CardContent className="p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total Production Recovery</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total Avg Production Recovery</p>
             <p className="text-2xl font-bold text-emerald-600">{totalRecovery > 0 ? `+${fmt(totalRecovery)} bbl/d` : '—'}</p>
           </CardContent>
         </Card>
@@ -709,6 +718,151 @@ function ROITable({ monthlyDeclineRate }: { monthlyDeclineRate: number }) {
   );
 }
 
+// ─── Wireline Finance Section ───────────────────────────────────────────────
+
+function WLFinanceSection() {
+  const { data: jobs = [], isLoading } = trpc.wellJobs.list.useQuery();
+  const { data: oilPrices = [] } = trpc.finance.listOilPrices.useQuery();
+
+  const oilPriceMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    oilPrices.forEach(p => { m[p.month] = p.avgPrice; });
+    return m;
+  }, [oilPrices]);
+
+  const wlJobs = useMemo(() =>
+    jobs.filter(j => j.serviceLine === 'wireline').sort((a, b) => a.endDate.localeCompare(b.endDate)),
+    [jobs]
+  );
+
+  if (isLoading) return null;
+  if (wlJobs.length === 0) return null;
+
+  const rows = wlJobs.map(job => {
+    const month = job.endDate.substring(0, 7);
+    const oilPrice = oilPriceMap[month] ?? null;
+    const equipCost = (job.wlEquipmentRentPerDay ?? 0) * (job.wlRentalDays ?? 0);
+    const totalCost = calcJobTotalCost(job);
+    const recovery = (job.production30Days != null && job.productionBefore != null)
+      ? job.production30Days - job.productionBefore : null;
+    const flatROI = calcFlatROI(job.production30Days, job.productionBefore, oilPrice, totalCost, job.endDate);
+    const paybackDays = calcPaybackDays(job.production30Days, job.productionBefore, oilPrice, totalCost);
+    return { job, oilPrice, totalCost, equipCost, recovery, flatROI, paybackDays };
+  });
+
+  const totalCostSum = rows.reduce((s, r) => s + (r.totalCost ?? 0), 0);
+  const totalRecovery = rows.reduce((s, r) => s + (r.recovery ?? 0), 0);
+
+  return (
+    <div className="space-y-4">
+      {/* Section Header */}
+      <div className="flex items-center gap-3 pb-2 border-b border-slate-200">
+        <div className="w-8 h-8 rounded-lg bg-teal-700 flex items-center justify-center flex-shrink-0">
+          <DollarSign className="w-4 h-4 text-white" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-teal-700">Wireline Finance & ROI</h2>
+          <p className="text-sm text-slate-500">Wireline job costs and production recovery — separate from Coiled Tubing.</p>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="border-0 shadow-sm bg-white">
+          <CardContent className="p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total WL Investment</p>
+            <p className="text-2xl font-bold text-teal-700">{fmtUSD(totalCostSum || null)}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm bg-white">
+          <CardContent className="p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total Avg Production Recovery</p>
+            <p className="text-2xl font-bold text-emerald-600">{totalRecovery > 0 ? `+${fmt(totalRecovery)} bbl/d` : '—'}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* WL Jobs Table */}
+      <Card className="border-0 shadow-sm bg-white">
+        <CardHeader className="pb-3 pt-5 px-6 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-teal-700 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Wireline — Cost & Payback per Well
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 hover:bg-slate-50">
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 w-8">#</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Platform</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Well</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Job Type</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500">End Date</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Equip. Rental</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Job Bill</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Total Cost</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Recovery +30d</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Oil Price</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Flat ROI</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Payback</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map(({ job, oilPrice, totalCost, equipCost, recovery, flatROI, paybackDays }, idx) => (
+                  <TableRow key={job.id} className="border-b border-slate-50 hover:bg-teal-50/30">
+                    <TableCell className="text-slate-400 text-xs font-mono">{idx + 1}</TableCell>
+                    <TableCell className="font-semibold text-slate-700 text-sm">{job.platform}</TableCell>
+                    <TableCell className="font-mono text-sm text-teal-700 font-semibold">{job.wellNumber}</TableCell>
+                    <TableCell className="text-sm text-slate-600">{job.jobType}</TableCell>
+                    <TableCell>
+                      {job.status === 'Complete' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">✓ Complete</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">⚠ Incomplete</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-500 font-mono whitespace-nowrap">
+                      {new Date(job.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-mono text-slate-600">{equipCost > 0 ? fmtUSD(equipCost) : '—'}</TableCell>
+                    <TableCell className="text-right text-sm font-mono text-slate-600">{fmtUSD(job.jobBill)}</TableCell>
+                    <TableCell className="text-right text-sm font-mono font-semibold text-slate-800">{fmtUSD(totalCost)}</TableCell>
+                    <TableCell className="text-right text-sm font-mono">
+                      {recovery != null ? (
+                        <span className={recovery >= 0 ? 'text-emerald-600 font-semibold' : 'text-red-500 font-semibold'}>
+                          {recovery >= 0 ? '+' : ''}{fmt(recovery)} bbl/d
+                        </span>
+                      ) : <span className="text-slate-300">—</span>}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-mono text-slate-600">
+                      {oilPrice ? `$${oilPrice}` : <span className="text-amber-400 text-xs">No price</span>}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-mono">
+                      <span className={flatROI != null ? 'text-emerald-600 font-semibold' : 'text-slate-300 text-xs'}>
+                        {flatROI != null ? fmtUSD(flatROI) : '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-mono">
+                      {paybackDays != null ? (
+                        <span className={`font-semibold ${paybackDays <= 30 ? 'text-emerald-600' : paybackDays <= 90 ? 'text-amber-500' : 'text-orange-500'}`}>
+                          {paybackDays} days
+                        </span>
+                      ) : <span className="text-slate-300 text-xs">—</span>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Main Finance Page ────────────────────────────────────────────────────────
 
 export default function Finance({ selectedYear }: { selectedYear?: number }) {
@@ -730,8 +884,11 @@ export default function Finance({ selectedYear }: { selectedYear?: number }) {
       {/* Decline Rate Setting */}
       <DeclineRateSetting value={monthlyDeclineRate} onChange={setMonthlyDeclineRate} />
 
-      {/* ROI Table + Charts */}
+      {/* CT ROI Table + Charts */}
       <ROITable monthlyDeclineRate={monthlyDeclineRate} />
+
+      {/* WL Finance Section */}
+      <WLFinanceSection />
 
       {/* Oil Price Panel */}
       <OilPricePanel />

@@ -69,6 +69,20 @@ async function runMigrations() {
     console.log('[Database] Status migration note:', (e as Error).message);
   }
 
+  // Step 2b: Add new columns if they don't exist
+  const newColumns = [
+    { col: 'wlEquipmentRentPerDay', type: 'DOUBLE PRECISION' },
+    { col: 'wlRentalDays', type: 'DOUBLE PRECISION' },
+    { col: 'nptDays', type: 'DOUBLE PRECISION' },
+  ];
+  for (const { col, type } of newColumns) {
+    try {
+      await client.query(`ALTER TABLE well_jobs ADD COLUMN IF NOT EXISTS "${col}" ${type}`);
+    } catch (e) {
+      console.log(`[Database] Column ${col} note:`, (e as Error).message);
+    }
+  }
+
   // Step 3: Create tables
   try {
     await client.query(`

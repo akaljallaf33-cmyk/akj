@@ -369,6 +369,48 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
     return expectedThisMonthPlans.reduce((sum, p) => sum + (p.expectedRecovery ?? 0), 0);
   }, [expectedThisMonthPlans]);
 
+  // CT total investment
+  const ctJobs = jobs.filter(j => j.serviceLine === 'coiled-tubing');
+  const ctTotalCost = ctJobs.reduce((sum, j) => {
+    let cost = 0;
+    if (j.unit === 'CT-1' && j.ct1DailyRate) {
+      cost += (j.operationalDays ?? 0) * j.ct1DailyRate + (j.badWeatherDays ?? 0) * j.ct1DailyRate * 0.5;
+    }
+    const onRig = j.onRig === true || (j.onRig as unknown) === 1;
+    if (j.unit === 'CT-2' && onRig && j.rigDailyRate) {
+      cost += (j.rigOperationalDays ?? 0) * j.rigDailyRate + (j.rigBadWeatherDays ?? 0) * j.rigDailyRate * 0.5;
+    }
+    cost += j.jobBill ?? 0;
+    return sum + cost;
+  }, 0);
+
+  // Total production recovery $ (flat: recovery × $70 avg × days to year end)
+  const YEAR_END = new Date('2026-12-31');
+  const ctProdRecoveryUSD = ctJobs.reduce((sum, j) => {
+    if (j.production30Days == null || j.productionBefore == null) return sum;
+    const recovery = j.production30Days - j.productionBefore;
+    if (recovery <= 0) return sum;
+    const stableDate = new Date(j.endDate);
+    stableDate.setDate(stableDate.getDate() + 30);
+    const days = Math.max(1, Math.ceil((YEAR_END.getTime() - stableDate.getTime()) / (1000 * 60 * 60 * 24)));
+    return sum + recovery * 70 * days;
+  }, 0);
+
+  // NPT summary
+  const totalNPTDays = ctJobs.reduce((sum, j) => sum + (j.nptDays ?? 0), 0);
+  const totalBadWeatherDays = ctJobs.reduce((sum, j) => sum + (j.badWeatherDays ?? 0) + (j.rigBadWeatherDays ?? 0), 0);
+  const badWeatherSaved = ctJobs.reduce((sum, j) => {
+    const ct1Save = (j.badWeatherDays ?? 0) * (j.ct1DailyRate ?? 0) * 0.5;
+    const ct2Save = (j.rigBadWeatherDays ?? 0) * (j.rigDailyRate ?? 0) * 0.5;
+    return sum + ct1Save + ct2Save;
+  }, 0);
+  const nptSpent = ctJobs.reduce((sum, j) => {
+    const rate = j.ct1DailyRate ?? j.rigDailyRate ?? 0;
+    return sum + (j.nptDays ?? 0) * rate;
+  }, 0);
+
+  const fmtUSD = (n: number) => n > 0 ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—';
+
   const kpis = [
     { label: 'Total Jobs 2026', value: totalJobs, icon: Activity, color: '#073674', sub: 'All service lines' },
     { label: 'Complete Jobs', value: totalSuccessful, icon: CheckCircle2, color: '#059669', sub: `${totalJobs > 0 ? ((totalSuccessful/totalJobs)*100).toFixed(0) : 0}% completion rate` },
@@ -589,6 +631,72 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
           </motion.div>
         ))}
       </div>
+
+      {/* CT Finance & NPT Summary */}
+      {(ctTotalCost > 0 || totalNPTDays > 0 || ctProdRecoveryUSD > 0) && (
+        <div className="space-y-3">
+          {/* CT Cost + Production Recovery $ */}
+          <div className="grid grid-cols-2 gap-4">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+              <Card className="border-0 shadow-sm bg-white">
+                <CardContent className="pt-4 pb-4 px-5">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[#073674]" />
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 leading-tight">CT Total Investment</p>
+                  </div>
+                  <p className="text-2xl font-bold font-mono text-[#073674]">{fmtUSD(ctTotalCost)}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{ctJobs.length} CT job{ctJobs.length !== 1 ? 's' : ''}</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+              <Card className="border-0 shadow-sm bg-white">
+                <CardContent className="pt-4 pb-4 px-5">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-emerald-500" />
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 leading-tight">Total Avg Production Recovery $</p>
+                  </div>
+                  <p className="text-2xl font-bold font-mono text-emerald-600">{ctProdRecoveryUSD > 0 ? fmtUSD(ctProdRecoveryUSD) : '—'}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">CT · recovery × $70 × days to year-end</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+
+          {/* NPT Summary */}
+          {(totalNPTDays > 0 || totalBadWeatherDays > 0) && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+              <Card className="border-0 shadow-sm bg-white border-l-4 border-l-orange-400">
+                <CardContent className="pt-4 pb-4 px-5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-orange-600 mb-3">NPT & Weather Summary — CT</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-0.5">Total NPT Days</p>
+                      <p className="text-xl font-bold font-mono text-orange-600">{totalNPTDays}</p>
+                      <p className="text-xs text-slate-400">days non-productive</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-0.5">Bad Weather Days</p>
+                      <p className="text-xl font-bold font-mono text-blue-600">{totalBadWeatherDays}</p>
+                      <p className="text-xs text-slate-400">days weather standby</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-0.5">$ Saved (Weather Discount)</p>
+                      <p className="text-xl font-bold font-mono text-emerald-600">{fmtUSD(badWeatherSaved)}</p>
+                      <p className="text-xs text-slate-400">50% rate on weather days</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-0.5">$ Spent on NPT</p>
+                      <p className="text-xl font-bold font-mono text-red-500">{fmtUSD(nptSpent)}</p>
+                      <p className="text-xs text-slate-400">full rate × NPT days</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </div>
+      )}
 
       {/* Status Summary Row */}
       <div className="grid grid-cols-2 gap-4">

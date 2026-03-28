@@ -99,6 +99,11 @@ export const appRouter = router({
         rigDailyRate: z.number().nullable().optional(),
         rigOperationalDays: z.number().nullable().optional(),
         rigBadWeatherDays: z.number().nullable().optional(),
+        // Wireline equipment rental
+        wlEquipmentRentPerDay: z.number().nullable().optional(),
+        wlRentalDays: z.number().nullable().optional(),
+        // CT NPT tracking
+        nptDays: z.number().nullable().optional(),
         // Shared
         jobBill: z.number().nullable().optional(),
       }))
@@ -131,6 +136,11 @@ export const appRouter = router({
         rigDailyRate: z.number().nullable().optional(),
         rigOperationalDays: z.number().nullable().optional(),
         rigBadWeatherDays: z.number().nullable().optional(),
+        // Wireline equipment rental
+        wlEquipmentRentPerDay: z.number().nullable().optional(),
+        wlRentalDays: z.number().nullable().optional(),
+        // CT NPT tracking
+        nptDays: z.number().nullable().optional(),
         // Shared
         jobBill: z.number().nullable().optional(),
       }))

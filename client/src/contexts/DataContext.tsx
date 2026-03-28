@@ -29,6 +29,9 @@ function rowToJob(row: {
   rigDailyRate?: number | null;
   rigOperationalDays?: number | null;
   rigBadWeatherDays?: number | null;
+  wlEquipmentRentPerDay?: number | null;
+  wlRentalDays?: number | null;
+  nptDays?: number | null;
   jobBill?: number | null;
 }): WellJob {
   return {
@@ -53,6 +56,9 @@ function rowToJob(row: {
     rigDailyRate: row.rigDailyRate ?? undefined,
     rigOperationalDays: row.rigOperationalDays ?? undefined,
     rigBadWeatherDays: row.rigBadWeatherDays ?? undefined,
+    wlEquipmentRentPerDay: row.wlEquipmentRentPerDay ?? undefined,
+    wlRentalDays: row.wlRentalDays ?? undefined,
+    nptDays: row.nptDays ?? undefined,
     jobBill: row.jobBill ?? undefined,
   };
 }
@@ -126,6 +132,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       rigDailyRate: job.rigDailyRate,
       rigOperationalDays: job.rigOperationalDays,
       rigBadWeatherDays: job.rigBadWeatherDays,
+      wlEquipmentRentPerDay: job.wlEquipmentRentPerDay,
+      wlRentalDays: job.wlRentalDays,
+      nptDays: job.nptDays,
       jobBill: job.jobBill,
     });
   }, [createMutation]);
@@ -155,6 +164,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       ...(updates.rigDailyRate !== undefined && { rigDailyRate: updates.rigDailyRate }),
       ...(updates.rigOperationalDays !== undefined && { rigOperationalDays: updates.rigOperationalDays }),
       ...(updates.rigBadWeatherDays !== undefined && { rigBadWeatherDays: updates.rigBadWeatherDays }),
+      ...(updates.wlEquipmentRentPerDay !== undefined && { wlEquipmentRentPerDay: updates.wlEquipmentRentPerDay }),
+      ...(updates.wlRentalDays !== undefined && { wlRentalDays: updates.wlRentalDays }),
+      ...(updates.nptDays !== undefined && { nptDays: updates.nptDays }),
       ...(updates.jobBill !== undefined && { jobBill: updates.jobBill }),
     });
   }, [updateMutation]);

@@ -46,6 +46,9 @@ const defaultForm = (sl: ServiceLine): Omit<WellJob, 'id'> => ({
   rigDailyRate: null,
   rigOperationalDays: null,
   rigBadWeatherDays: null,
+  wlEquipmentRentPerDay: null,
+  wlRentalDays: null,
+  nptDays: null,
   jobBill: null,
 });
 
@@ -79,7 +82,9 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
   const calcTotalCost = (): number | null => {
     if (isWL) {
       const bill = form.jobBill ?? 0;
-      return bill > 0 ? bill : null;
+      const equipCost = (form.wlEquipmentRentPerDay ?? 0) * (form.wlRentalDays ?? 0);
+      const total = bill + equipCost;
+      return total > 0 ? total : null;
     }
     if (!isCT) return null;
     let total = 0;
@@ -440,6 +445,65 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
             </div>
           )}
 
+          {/* ─── WL Equipment Rental Cost ─────────────────────── */}
+          {isWL && (
+            <div className="col-span-2">
+              <div className="border border-blue-200 rounded-xl p-4 bg-blue-50/30 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#073674]" />
+                  <h3 className="text-sm font-bold text-[#073674] uppercase tracking-wide">Equipment Rental Cost</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-600">Equipment Rent per Day (USD/day)</Label>
+                    <Input
+                      type="number" min="0" placeholder="e.g. 8000"
+                      value={form.wlEquipmentRentPerDay ?? ''}
+                      onChange={e => set('wlEquipmentRentPerDay', parseNum(e.target.value))}
+                      className="border-slate-300 focus:border-[#073674] text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-600">Total Rental Days</Label>
+                    <Input
+                      type="number" min="0" step="0.5" placeholder="e.g. 2"
+                      value={form.wlRentalDays ?? ''}
+                      onChange={e => set('wlRentalDays', parseNum(e.target.value))}
+                      className="border-slate-300 focus:border-[#073674] text-sm"
+                    />
+                  </div>
+                </div>
+                {(form.wlEquipmentRentPerDay || form.wlRentalDays) && (
+                  <div className="text-xs text-slate-500 bg-white rounded-lg px-3 py-2 border border-slate-200">
+                    Equipment Rental = {form.wlEquipmentRentPerDay ?? 0} × {form.wlRentalDays ?? 0} = <span className="font-bold text-[#073674]">${((form.wlEquipmentRentPerDay ?? 0) * (form.wlRentalDays ?? 0)).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ─── CT NPT (Non-Productive Time) ─────────────────── */}
+          {isCT && (
+            <div className="col-span-2">
+              <div className="border border-orange-200 rounded-xl p-4 bg-orange-50/30 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-orange-500" />
+                  <h3 className="text-sm font-bold text-orange-700 uppercase tracking-wide">NPT — Non-Productive Time</h3>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-600">NPT Days</Label>
+                  <Input
+                    type="number" min="0" step="0.5" placeholder="e.g. 1.5"
+                    value={form.nptDays ?? ''}
+                    onChange={e => set('nptDays', parseNum(e.target.value))}
+                    className="border-slate-300 focus:border-orange-500 text-sm"
+                  />
+                  <p className="text-xs text-slate-400">Days lost due to equipment failure, waiting on parts, etc. (not weather)</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ─── Job Bill (CT & WL) ─────────────────────────── */}
           {(isCT || isWL) && (
             <div className="space-y-1.5">
@@ -450,7 +514,7 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
                 onChange={e => set('jobBill', parseNum(e.target.value))}
                 className="border-slate-300 focus:border-[#073674]"
               />
-              {isWL && <p className="text-xs text-slate-400">Total cost of the Wireline job service bill</p>}
+              {isWL && <p className="text-xs text-slate-400">Total cost of the Wireline job service bill (excluding equipment rental)</p>}
             </div>
           )}
 

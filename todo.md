@@ -81,3 +81,9 @@
 - [ ] Replace 3 status categories (Successful, Partially Successful, Failed) with 2 (Complete, Incomplete) in schema, server, and UI
 - [ ] Enforce login on all pages — redirect unauthenticated users to login screen, no page accessible without credentials
 - [ ] Migrate to Render.com hosting to bypass Manus OAuth gate — remove Manus OAuth dependency, configure standalone deployment with custom wi-dash.com domain
+
+- [ ] Overview: Add CT total cost card and total production recovery $ card; rename "Total Production Recovery" to "Total Average Production Recovery"
+- [ ] Wireline jobs: Add equipment rent per day field + auto-calculate total cost (rent/day × operational days); separate WL finance/production from CT in Finance & ROI page
+- [ ] CT jobs: Add NPT fields (bad weather days, NPT days, $ saved, $ spent); show NPT summary on Overview page
+- [ ] DB migration: add wireline cost columns and NPT columns to well_jobs table
+- [ ] Update Power BI package to reflect all 3 fixes

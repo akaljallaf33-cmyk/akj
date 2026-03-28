@@ -50,6 +50,7 @@ export const wellJobs = pgTable('well_jobs', {
   wlRentalDays: doublePrecision('wlRentalDays'),
   // CT NPT (Non-Productive Time) tracking
   nptDays: doublePrecision('nptDays'),
+  nptNotes: text('nptNotes'),
   // Shared
   jobBill: doublePrecision('jobBill'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),

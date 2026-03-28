@@ -32,6 +32,7 @@ function rowToJob(row: {
   wlEquipmentRentPerDay?: number | null;
   wlRentalDays?: number | null;
   nptDays?: number | null;
+  nptNotes?: string | null;
   jobBill?: number | null;
 }): WellJob {
   return {
@@ -59,6 +60,7 @@ function rowToJob(row: {
     wlEquipmentRentPerDay: row.wlEquipmentRentPerDay ?? undefined,
     wlRentalDays: row.wlRentalDays ?? undefined,
     nptDays: row.nptDays ?? undefined,
+    nptNotes: row.nptNotes ?? undefined,
     jobBill: row.jobBill ?? undefined,
   };
 }
@@ -135,6 +137,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       wlEquipmentRentPerDay: job.wlEquipmentRentPerDay,
       wlRentalDays: job.wlRentalDays,
       nptDays: job.nptDays,
+      nptNotes: job.nptNotes,
       jobBill: job.jobBill,
     });
   }, [createMutation]);
@@ -167,6 +170,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       ...(updates.wlEquipmentRentPerDay !== undefined && { wlEquipmentRentPerDay: updates.wlEquipmentRentPerDay }),
       ...(updates.wlRentalDays !== undefined && { wlRentalDays: updates.wlRentalDays }),
       ...(updates.nptDays !== undefined && { nptDays: updates.nptDays }),
+      ...(updates.nptNotes !== undefined && { nptNotes: updates.nptNotes }),
       ...(updates.jobBill !== undefined && { jobBill: updates.jobBill }),
     });
   }, [updateMutation]);

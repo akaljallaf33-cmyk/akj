@@ -615,17 +615,24 @@ export default function ServiceLineTab({ serviceLine, selectedYear }: Props) {
                         )}
                       </motion.tr>
                       {/* Expanded note row */}
-                      {expandedNoteId === job.id && job.notes && (
+                      {expandedNoteId === job.id && (job.notes || (job.nptDays && job.nptNotes)) && (
                         <tr key={`note-${job.id}`} className="bg-blue-50/60">
-                          <td
-                            colSpan={20}
-                            className="px-6 py-3"
-                          >
+                          <td colSpan={20} className="px-6 py-3">
                             <div className="flex items-start gap-2">
                               <MessageSquare className="w-4 h-4 text-[#073674] shrink-0 mt-0.5" />
-                              <div>
-                                <p className="text-xs font-semibold text-[#073674] mb-0.5">Note</p>
-                                <p className="text-sm text-slate-700 leading-relaxed">{job.notes}</p>
+                              <div className="flex-1 space-y-2">
+                                {job.notes && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-[#073674] mb-0.5">Note</p>
+                                    <p className="text-sm text-slate-700 leading-relaxed">{job.notes}</p>
+                                  </div>
+                                )}
+                                {job.nptDays && job.nptNotes && (
+                                  <div className="border-t border-orange-100 pt-2">
+                                    <p className="text-xs font-semibold text-orange-600 mb-0.5">NPT Reason ({job.nptDays} days)</p>
+                                    <p className="text-sm text-slate-700 leading-relaxed">{job.nptNotes}</p>
+                                  </div>
+                                )}
                               </div>
                               <button
                                 className="ml-auto text-slate-400 hover:text-slate-600 p-1"

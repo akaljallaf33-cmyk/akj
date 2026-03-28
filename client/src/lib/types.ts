@@ -57,6 +57,7 @@ export interface WellJob {
   wlRentalDays?: number | null;          // number of rental days
   // CT NPT tracking
   nptDays?: number | null;               // non-productive time days
+  nptNotes?: string | null;             // reason/notes for NPT
   // Shared
   jobBill?: number | null;            // USD — job service bill
 }

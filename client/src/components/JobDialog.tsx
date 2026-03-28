@@ -49,6 +49,7 @@ const defaultForm = (sl: ServiceLine): Omit<WellJob, 'id'> => ({
   wlEquipmentRentPerDay: null,
   wlRentalDays: null,
   nptDays: null,
+  nptNotes: '',
   jobBill: null,
 });
 
@@ -490,15 +491,28 @@ export default function JobDialog({ open, onClose, serviceLine, editJob }: JobDi
                   <div className="w-2 h-2 rounded-full bg-orange-500" />
                   <h3 className="text-sm font-bold text-orange-700 uppercase tracking-wide">NPT — Non-Productive Time</h3>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-600">NPT Days</Label>
-                  <Input
-                    type="number" min="0" step="0.5" placeholder="e.g. 1.5"
-                    value={form.nptDays ?? ''}
-                    onChange={e => set('nptDays', parseNum(e.target.value))}
-                    className="border-slate-300 focus:border-orange-500 text-sm"
-                  />
-                  <p className="text-xs text-slate-400">Days lost due to equipment failure, waiting on parts, etc. (not weather)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-600">NPT Days</Label>
+                    <Input
+                      type="number" min="0" step="0.5" placeholder="e.g. 1.5"
+                      value={form.nptDays ?? ''}
+                      onChange={e => set('nptDays', parseNum(e.target.value))}
+                      className="border-slate-300 focus:border-orange-500 text-sm"
+                    />
+                    <p className="text-xs text-slate-400">Days lost to NPT</p>
+                  </div>
+                  <div className="space-y-1.5 col-span-2">
+                    <Label className="text-xs font-semibold text-slate-600">NPT Reason / Notes</Label>
+                    <textarea
+                      rows={3}
+                      placeholder="e.g. Waiting on spare parts, equipment failure, HSE hold, bad weather..."
+                      value={form.nptNotes ?? ''}
+                      onChange={e => set('nptNotes', e.target.value)}
+                      className="w-full rounded-md border border-slate-300 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 text-sm px-3 py-2 resize-none bg-white text-slate-900"
+                    />
+                    <p className="text-xs text-slate-400">Describe the reason for NPT — this will appear in the Overview NPT summary</p>
+                  </div>
                 </div>
               </div>
             </div>

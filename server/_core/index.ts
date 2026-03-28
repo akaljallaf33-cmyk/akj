@@ -74,6 +74,7 @@ async function runMigrations() {
     { col: 'wlEquipmentRentPerDay', type: 'DOUBLE PRECISION' },
     { col: 'wlRentalDays', type: 'DOUBLE PRECISION' },
     { col: 'nptDays', type: 'DOUBLE PRECISION' },
+    { col: 'nptNotes', type: 'TEXT' },
   ];
   for (const { col, type } of newColumns) {
     try {
@@ -119,6 +120,7 @@ async function runMigrations() {
         "rigOperationalDays" DOUBLE PRECISION,
         "rigBadWeatherDays" DOUBLE PRECISION,
         "jobBill" DOUBLE PRECISION,
+        "nptNotes" TEXT,
         "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
         "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
       );

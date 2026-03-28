@@ -104,6 +104,7 @@ export const appRouter = router({
         wlRentalDays: z.number().nullable().optional(),
         // CT NPT tracking
         nptDays: z.number().nullable().optional(),
+        nptNotes: z.string().nullable().optional(),
         // Shared
         jobBill: z.number().nullable().optional(),
       }))
@@ -141,6 +142,7 @@ export const appRouter = router({
         wlRentalDays: z.number().nullable().optional(),
         // CT NPT tracking
         nptDays: z.number().nullable().optional(),
+        nptNotes: z.string().nullable().optional(),
         // Shared
         jobBill: z.number().nullable().optional(),
       }))

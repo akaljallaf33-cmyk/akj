@@ -87,3 +87,4 @@
 - [ ] CT jobs: Add NPT fields (bad weather days, NPT days, $ saved, $ spent); show NPT summary on Overview page
 - [ ] DB migration: add wireline cost columns and NPT columns to well_jobs table
 - [ ] Update Power BI package to reflect all 3 fixes
+- [ ] Add nptNotes field to CT jobs (free-text reason for NPT) — show in Overview NPT summary and CT job table

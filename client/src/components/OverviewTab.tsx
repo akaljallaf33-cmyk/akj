@@ -691,6 +691,27 @@ export default function OverviewTab({ selectedYear }: { selectedYear?: number })
                       <p className="text-xs text-slate-400">full rate × NPT days</p>
                     </div>
                   </div>
+                  {/* NPT Notes per job */}
+                  {ctJobs.filter(j => j.nptDays && j.nptDays > 0 && j.nptNotes).length > 0 && (
+                    <div className="mt-3 border-t border-orange-100 pt-3">
+                      <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-2">NPT Reasons</p>
+                      <div className="space-y-2">
+                        {ctJobs
+                          .filter(j => j.nptDays && j.nptDays > 0 && j.nptNotes)
+                          .map(j => (
+                            <div key={j.id} className="flex items-start gap-2 text-xs">
+                              <span className="inline-flex items-center gap-1 shrink-0 bg-orange-100 text-orange-700 rounded px-1.5 py-0.5 font-mono font-semibold">
+                                {j.platform} {j.wellNumber}
+                              </span>
+                              <span className="text-slate-600">
+                                <span className="font-semibold text-orange-600">{j.nptDays}d NPT</span> — {j.nptNotes}
+                              </span>
+                            </div>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
